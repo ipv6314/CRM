@@ -45,7 +45,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         <div className="w-full max-w-[440px] flex flex-col gap-10 animate-in fade-in zoom-in duration-500">
           <div className="text-center space-y-6">
             <div className="inline-flex items-center justify-center w-48 mx-auto">
-              <img src="input_file_0.png" alt="Branding Logo" className="w-full h-auto drop-shadow-2xl" />
+              <img src="/assets/logo.png" alt="Branding Logo" className="w-full h-auto drop-shadow-2xl" />
             </div>
             <div>
               <h1 className="text-4xl font-black text-white tracking-tight">Bienvenido</h1>
@@ -131,7 +131,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       {/* Decorative background element */}
       <div className="fixed -bottom-20 -right-20 opacity-[0.03] pointer-events-none rotate-12">
-        <img src="input_file_0.png" alt="Background Decorative" className="w-[600px] h-auto" />
+        <img src="/assets/logo.png" alt="Background Decorative" className="w-[600px] h-auto" />
       </div>
     </div>
   );
