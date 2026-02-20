@@ -1,0 +1,7 @@
+{
+  "name": "ATENEA CRM",
+  "description": "A comprehensive Technical Management CRM featuring equipment inventory, QR code generation, incident support tracking, spare parts stock control, and advanced analytics dashboards.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
