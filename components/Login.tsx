@@ -31,12 +31,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           <div className="size-10 overflow-hidden">
             <img src="/assets/logo.png" alt="Logo" className="w-full h-full object-contain" />
           </div>
-          <h2 className="text-white text-lg font-bold leading-tight tracking-[-0.015em]">CRM Gestión Técnica</h2>
-        </div>
-        <div className="flex items-center gap-4">
-          <button className="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-white/10 text-white text-sm font-bold border border-white/20 hover:bg-white/20 transition-all">
-            <span className="truncate">Soporte</span>
-          </button>
+          <h2 className="text-white text-lg font-bold leading-tight tracking-[-0.015em]">ATENEA CRM</h2>
         </div>
       </header>
 
