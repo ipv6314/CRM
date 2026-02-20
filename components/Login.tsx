@@ -29,7 +29,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <header className="w-full px-6 py-4 flex items-center justify-between absolute top-0 left-0 z-10">
         <div className="flex items-center gap-3 text-white">
           <div className="size-10 overflow-hidden">
-            <img src="input_file_0.png" alt="Logo" className="w-full h-full object-contain" />
+            <img src="/assets/logo.png" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <h2 className="text-white text-lg font-bold leading-tight tracking-[-0.015em]">CRM Gestión Técnica</h2>
         </div>
