@@ -96,6 +96,18 @@ const SparePartsView: React.FC = () => {
     reader.readAsText(file);
   };
 
+  const handleExport = () => {
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + "Nombre,Stock Actual,Stock Minimo,Estado\n"
+      + parts.map(p => `${p.name},${p.currentStock},${p.minStock},${p.currentStock < p.minStock ? 'CRITICO' : 'OK'}`).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "resumen_stock.csv");
+    document.body.appendChild(link);
+    link.click();
+  };
+
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500">
       <div className="flex justify-between items-end">
@@ -104,6 +116,13 @@ const SparePartsView: React.FC = () => {
           <p className="text-[#897161]">Control de existencias e historial de movimientos</p>
         </div>
         <div className="flex gap-3">
+          <button 
+            onClick={handleExport}
+            className="border-2 border-[#658C2A] text-[#658C2A] px-5 h-11 rounded-xl font-bold flex items-center gap-2 hover:bg-green-50 transition-all"
+          >
+            <span className="material-symbols-outlined">download</span>
+            Exportar Stock
+          </button>
           <button 
             onClick={() => setShowLogs(!showLogs)}
             className="border-2 border-gray-200 text-gray-500 px-5 h-11 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-50 transition-all"
@@ -123,24 +142,31 @@ const SparePartsView: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-6">
-           <div className="size-14 rounded-2xl bg-green-50 flex items-center justify-center text-[#4B7349]">
-              <span className="material-symbols-outlined text-3xl">inventory</span>
+      <div className="grid grid-cols-1 gap-4">
+        <div className={`bg-white p-6 rounded-2xl border ${criticalCount > 0 ? 'border-red-200 bg-red-50/10' : 'border-gray-200'} shadow-sm flex flex-col gap-6 transition-colors`}>
+           <div className="flex items-center gap-6">
+             <div className={`size-14 rounded-2xl ${criticalCount > 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-[#4B7349]'} flex items-center justify-center`}>
+                <span className="material-symbols-outlined text-3xl">{criticalCount > 0 ? 'warning' : 'check_circle'}</span>
+             </div>
+             <div className="flex flex-col">
+                <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Repuestos bajo Mínimo</span>
+                <span className={`text-4xl font-black ${criticalCount > 0 ? 'text-red-600' : 'text-[#4B7349]'}`}>{criticalCount}</span>
+             </div>
            </div>
-           <div className="flex flex-col">
-              <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Stock Total de Repuestos</span>
-              <span className="text-4xl font-black text-[#181411]">{totalStock}</span>
-           </div>
-        </div>
-        <div className={`bg-white p-6 rounded-2xl border ${criticalCount > 0 ? 'border-red-200 bg-red-50/10' : 'border-gray-200'} shadow-sm flex items-center gap-6 transition-colors`}>
-           <div className={`size-14 rounded-2xl ${criticalCount > 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-[#4B7349]'} flex items-center justify-center`}>
-              <span className="material-symbols-outlined text-3xl">{criticalCount > 0 ? 'warning' : 'check_circle'}</span>
-           </div>
-           <div className="flex flex-col">
-              <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Repuestos bajo Mínimo</span>
-              <span className={`text-4xl font-black ${criticalCount > 0 ? 'text-red-600' : 'text-[#4B7349]'}`}>{criticalCount}</span>
-           </div>
+           
+           {criticalCount > 0 && (
+             <div className="border-t pt-4 flex flex-col gap-2">
+               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Detalle de faltantes:</p>
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                 {parts.filter(p => p.currentStock < p.minStock).map(p => (
+                   <div key={p.id} className="flex justify-between items-center bg-white border border-red-100 px-3 py-2 rounded-lg">
+                     <span className="text-xs font-bold text-gray-700">{p.name}</span>
+                     <span className="text-xs font-black text-red-600">{p.currentStock} / {p.minStock}</span>
+                   </div>
+                 ))}
+               </div>
+             </div>
+           )}
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import Barcode from 'react-barcode';
 import { DB } from '../services/db';
 import { Equipment, EquipmentLog } from '../types';
 import { COLORS } from '../constants';
@@ -549,10 +550,20 @@ ACTUALIZADO: ${item.updatedAt || item.createdAt}`;
             
             <QRCodeSVG 
               value={getQRValue(printingItem)} 
-              size={280} 
+              size={200} 
               level="H" 
               marginSize={1}
             />
+
+            <div className="w-full flex flex-col items-center gap-2">
+              <Barcode 
+                value={(printingItem.inventoryId && String(printingItem.inventoryId) !== 'NaN' && String(printingItem.inventoryId).trim() !== '') ? String(printingItem.inventoryId) : '0000'} 
+                width={1.5}
+                height={50}
+                fontSize={12}
+                background="transparent"
+              />
+            </div>
             
             <div className="text-center w-full">
               <p className="text-4xl font-black tracking-tighter mb-1">{(printingItem.inventoryId && String(printingItem.inventoryId) !== 'NaN' && String(printingItem.inventoryId).trim() !== '') ? printingItem.inventoryId : 'SIN INVENTARIO'}</p>

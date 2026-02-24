@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { DB } from '../services/db';
 import { COLORS } from '../constants';
@@ -7,6 +7,14 @@ import { COLORS } from '../constants';
 const Dashboard: React.FC = () => {
   const tickets = DB.getTickets();
   const equipment = DB.getEquipment();
+
+  const effectors = useMemo(() => {
+    const set = new Set(equipment.map(e => e.effector || 'Desconocido'));
+    return Array.from(set).sort();
+  }, [equipment]);
+
+  const [activeEffector, setActiveEffector] = useState(effectors[0] || '');
+  const [decommissionedEffector, setDecommissionedEffector] = useState(effectors[0] || '');
 
   const decommissionedCount = useMemo(() => {
     return equipment.filter(e => e.isDecommissioned).length;
@@ -23,31 +31,44 @@ const Dashboard: React.FC = () => {
     }));
   }, [tickets]);
 
-  const effectorComparisonData = useMemo(() => {
-    const stats: Record<string, { name: string, equipos: number, bajas: number }> = {};
-    
-    equipment.forEach(e => {
-      const effector = e.effector || 'Desconocido';
-      if (!stats[effector]) {
-        stats[effector] = { name: effector, equipos: 0, bajas: 0 };
-      }
-      if (e.isDecommissioned) {
-        stats[effector].bajas += 1;
-      } else {
-        stats[effector].equipos += 1;
-      }
+  const activeEffectorData = useMemo(() => {
+    const filtered = equipment.filter(e => !e.isDecommissioned && (e.effector || 'Desconocido') === activeEffector);
+    const counts: Record<string, number> = {};
+    filtered.forEach(e => {
+      counts[e.type] = (counts[e.type] || 0) + 1;
     });
+    return Object.keys(counts).map(type => ({ name: type, value: counts[type] }));
+  }, [equipment, activeEffector]);
 
-    return Object.values(stats);
-  }, [equipment]);
+  const decommissionedEffectorData = useMemo(() => {
+    const filtered = equipment.filter(e => e.isDecommissioned && (e.effector || 'Desconocido') === decommissionedEffector);
+    const counts: Record<string, number> = {};
+    filtered.forEach(e => {
+      counts[e.type] = (counts[e.type] || 0) + 1;
+    });
+    return Object.keys(counts).map(type => ({ name: type, value: counts[type] }));
+  }, [equipment, decommissionedEffector]);
 
   const PIE_COLORS = [COLORS.primary, COLORS.secondary, COLORS.grey, '#808080'];
 
+  const handleExport = () => {
+    window.print();
+  };
+
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-3xl font-black text-[#181411]">Resumen de Administración</h2>
-        <p className="text-[#897161]">Estadísticas globales de soporte técnico e inventario</p>
+      <div className="flex justify-between items-end">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-3xl font-black text-[#181411]">Resumen de Administración</h2>
+          <p className="text-[#897161]">Estadísticas globales de soporte técnico e inventario</p>
+        </div>
+        <button 
+          onClick={handleExport}
+          className="bg-[#3D3D3D] text-white px-6 h-11 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:bg-black transition-all no-print"
+        >
+          <span className="material-symbols-outlined">picture_as_pdf</span>
+          Exportar Reporte
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -56,54 +77,61 @@ const Dashboard: React.FC = () => {
         <StatCard title="Equipos Registrados" value={equipment.length.toString()} icon="devices" color={COLORS.grey} trend="+5%" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Panel Central: Distribución por Efector (Barras Comparativas) */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-6 h-[450px]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Panel Activos por Efector */}
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-6 h-[450px]">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <h3 className="text-lg font-bold">Distribución por Efector (Activos vs Bajas)</h3>
+            <h3 className="text-lg font-bold">Equipos Activos por Tipo</h3>
+            <select 
+              className="text-xs font-bold border-gray-200 rounded-lg bg-gray-50 px-3 py-2 focus:ring-[#4B7349] no-print"
+              value={activeEffector}
+              onChange={(e) => setActiveEffector(e.target.value)}
+            >
+              {effectors.map(eff => <option key={eff} value={eff}>{eff}</option>)}
+            </select>
           </div>
           
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={effectorComparisonData.length ? effectorComparisonData : [{ name: 'N/A', equipos: 0, bajas: 0 }]}>
+              <BarChart data={activeEffectorData.length ? activeEffectorData : [{ name: 'N/A', value: 0 }]}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                <XAxis 
-                  dataKey="name" 
-                  fontSize={10} 
-                  axisLine={false} 
-                  tickLine={false}
-                  interval={0}
-                  angle={-15}
-                  textAnchor="end"
-                />
+                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
                 <YAxis fontSize={10} axisLine={false} tickLine={false} />
-                <Tooltip 
-                  cursor={{ fill: '#f8f7f6' }}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-                  labelStyle={{ fontWeight: 'bold', marginBottom: '4px', color: '#181411' }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
-                <Bar 
-                  dataKey="equipos" 
-                  name="Equipos Activos"
-                  fill={COLORS.primary} 
-                  radius={[4, 4, 0, 0]}
-                  animationDuration={1500}
-                />
-                <Bar 
-                  dataKey="bajas" 
-                  name="Bajas Totales"
-                  fill={COLORS.grey} 
-                  radius={[4, 4, 0, 0]}
-                  animationDuration={1500}
-                />
+                <Tooltip cursor={{ fill: '#f8f7f6' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }} />
+                <Bar dataKey="value" name="Cantidad" fill={COLORS.primary} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Panel Bajas por Efector */}
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-6 h-[450px]">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h3 className="text-lg font-bold">Bajas por Tipo</h3>
+            <select 
+              className="text-xs font-bold border-gray-200 rounded-lg bg-gray-50 px-3 py-2 focus:ring-[#4B7349] no-print"
+              value={decommissionedEffector}
+              onChange={(e) => setDecommissionedEffector(e.target.value)}
+            >
+              {effectors.map(eff => <option key={eff} value={eff}>{eff}</option>)}
+            </select>
+          </div>
+          
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={decommissionedEffectorData.length ? decommissionedEffectorData : [{ name: 'N/A', value: 0 }]}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                <YAxis fontSize={10} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{ fill: '#f8f7f6' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }} />
+                <Bar dataKey="value" name="Cantidad" fill={COLORS.grey} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Gráfico de Torta: Tipos de Incidencias */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-4 h-[450px]">
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-4 h-[450px] lg:col-span-2">
           <h3 className="text-lg font-bold">Tipos de Incidencias</h3>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>

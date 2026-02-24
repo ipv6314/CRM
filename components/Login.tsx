@@ -29,9 +29,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <header className="w-full px-6 py-4 flex items-center justify-between absolute top-0 left-0 z-10">
         <div className="flex items-center gap-3 text-white">
           <div className="size-10 overflow-hidden">
-            <img src="/assets/logo.png" alt="Logo" className="w-full h-full object-contain" />
+            <img src="input_file_0.png" alt="Logo" className="w-full h-full object-contain" />
           </div>
-          <h2 className="text-white text-lg font-bold leading-tight tracking-[-0.015em]">ATENEA CRM</h2>
+          <h2 className="text-white text-lg font-bold leading-tight tracking-[-0.015em]">CRM Gestión Técnica</h2>
+        </div>
+        <div className="flex items-center gap-4">
+          <button className="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-white/10 text-white text-sm font-bold border border-white/20 hover:bg-white/20 transition-all">
+            <span className="truncate">Soporte</span>
+          </button>
         </div>
       </header>
 
@@ -40,7 +45,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         <div className="w-full max-w-[440px] flex flex-col gap-10 animate-in fade-in zoom-in duration-500">
           <div className="text-center space-y-6">
             <div className="inline-flex items-center justify-center w-48 mx-auto">
-              <img src="/assets/logo.png" alt="Branding Logo" className="w-full h-auto drop-shadow-2xl" />
+              <img src="input_file_0.png" alt="Branding Logo" className="w-full h-auto drop-shadow-2xl" />
             </div>
             <div>
               <h1 className="text-4xl font-black text-white tracking-tight">Bienvenido</h1>
@@ -126,7 +131,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       {/* Decorative background element */}
       <div className="fixed -bottom-20 -right-20 opacity-[0.03] pointer-events-none rotate-12">
-        <img src="/assets/logo.png" alt="Background Decorative" className="w-[600px] h-auto" />
+        <img src="input_file_0.png" alt="Background Decorative" className="w-[600px] h-auto" />
       </div>
     </div>
   );

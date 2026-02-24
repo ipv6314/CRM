@@ -10,24 +10,12 @@ const SupportView: React.FC = () => {
   const [selectedEquip, setSelectedEquip] = useState<Equipment | null>(null);
   const [showNewTicket, setShowNewTicket] = useState(false);
   const [globalTickets, setGlobalTickets] = useState<SupportTicket[]>(DB.getTickets());
-  const [isScannerMode, setIsScannerMode] = useState(false);
-  const [isProcessingAI, setIsProcessingAI] = useState(false);
-  const [scannerBuffer, setScannerBuffer] = useState('');
   const [printingDictamen, setPrintingDictamen] = useState<SupportTicket | null>(null);
   
   const equipment = DB.getEquipment();
   const spareParts = DB.getSpareParts();
   const users = DB.getUsers();
   
-  const scannerInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isScannerMode && scannerInputRef.current) {
-      const timer = setTimeout(() => scannerInputRef.current?.focus(), 150);
-      return () => clearTimeout(timer);
-    }
-  }, [isScannerMode]);
-
   const currentUser = DB.getCurrentSession();
   const isAdmin = currentUser?.role === 'admin';
 
@@ -102,54 +90,6 @@ const SupportView: React.FC = () => {
     }
   };
 
-  const processScannerInput = async (rawData: string) => {
-    if (!rawData.trim()) return;
-    
-    setIsProcessingAI(true);
-    
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const systemInstruction = `Actúa como un experto en procesamiento de datos y recuperación de información. Tu tarea es recibir un texto proveniente de un lector de códigos QR que tiene errores de codificación de caracteres debido a un layout de teclado incorrecto. Corrige y extrae el valor del equipo.`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        config: { 
-          systemInstruction,
-          responseMimeType: "application/json"
-        },
-        contents: rawData,
-      });
-
-      const result = JSON.parse(response.text);
-      const targetName = result.nombre_equipo || result.equipo;
-
-      const found = equipment.find(e => 
-        e.name.toLowerCase() === targetName.toLowerCase() ||
-        (result.texto_corregido && e.inventoryId && result.texto_corregido.toLowerCase().includes(e.inventoryId.toLowerCase()))
-      );
-
-      if (found) {
-        setSelectedEquip(found);
-        setIsScannerMode(false);
-      } else {
-        alert(`IA identificó el equipo: ${targetName}\n\nSin embargo, no existe un registro local con ese nombre exacto.`);
-      }
-    } catch (error) {
-      console.error("AI Error:", error);
-      alert("Error al procesar la lectura del escáner con la IA.");
-    } finally {
-      setIsProcessingAI(false);
-      setScannerBuffer('');
-    }
-  };
-
-  const handleScannerKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      processScannerInput(scannerBuffer);
-    }
-  };
-
   return (
     <div className="flex flex-col gap-8 animate-in slide-in-from-right-4 duration-500 pb-20">
        <div className="flex flex-col gap-1">
@@ -158,28 +98,17 @@ const SupportView: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col gap-6">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-          <div className="md:col-span-8 flex flex-col gap-2">
-            <label className="text-xs font-bold uppercase text-gray-400 ml-1">Buscar Equipo para Soporte</label>
-            <div className="relative group">
-              <span className="material-symbols-outlined absolute left-3 top-3 text-gray-400 group-focus-within:text-[#4B7349]">search</span>
-              <input 
-                type="text" 
-                placeholder="Inventario, Nombre, Serie o MAC..." 
-                className="w-full h-12 pl-10 pr-4 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#4B7349]/50 text-sm font-medium transition-all"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="md:col-span-4">
-             <button 
-              onClick={() => setIsScannerMode(true)}
-              className="w-full h-12 flex items-center justify-center gap-2 bg-[#4B7349] hover:bg-[#457330] text-white rounded-xl font-bold transition-all shadow-lg shadow-green-100 active:scale-95"
-            >
-              <span className="material-symbols-outlined">qr_code_scanner</span>
-              ESCANEAR QR
-             </button>
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-bold uppercase text-gray-400 ml-1">Buscar Equipo para Soporte</label>
+          <div className="relative group">
+            <span className="material-symbols-outlined absolute left-3 top-3 text-gray-400 group-focus-within:text-[#4B7349]">search</span>
+            <input 
+              type="text" 
+              placeholder="Inventario, Nombre, Serie o MAC..." 
+              className="w-full h-12 pl-10 pr-4 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#4B7349]/50 text-sm font-medium transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </div>
 
@@ -206,46 +135,6 @@ const SupportView: React.FC = () => {
           </div>
         )}
       </div>
-
-      {isScannerMode && (
-        <div className="fixed inset-0 bg-[#181411]/95 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] p-10 max-w-sm w-full text-center flex flex-col gap-6 animate-in zoom-in-95 shadow-2xl relative overflow-hidden">
-            {isProcessingAI && (
-              <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-4">
-                <div className="size-12 border-4 border-gray-100 border-t-[#4B7349] rounded-full animate-spin"></div>
-                <span className="text-xs font-black uppercase tracking-widest text-[#4B7349]">Corrigiendo con IA...</span>
-              </div>
-            )}
-
-            <div className="size-24 rounded-full bg-green-50 flex items-center justify-center text-[#4B7349] mx-auto">
-              <span className="material-symbols-outlined text-5xl animate-pulse">qr_code_scanner</span>
-            </div>
-            
-            <div className="flex flex-col gap-2">
-              <h3 className="text-2xl font-black uppercase tracking-tight text-[#3D3D3D]">Lector 2D Preparado</h3>
-              <p className="text-sm text-gray-400 font-medium leading-relaxed">Capture el código QR del equipo.</p>
-            </div>
-            
-            <div className="h-0 w-0 overflow-hidden opacity-0">
-              <input 
-                ref={scannerInputRef}
-                type="text"
-                value={scannerBuffer}
-                onChange={(e) => setScannerBuffer(e.target.value)}
-                onKeyDown={handleScannerKeyDown}
-                autoFocus
-              />
-            </div>
-
-            <button 
-              onClick={() => { setIsScannerMode(false); setScannerBuffer(''); }}
-              className="mt-2 h-12 w-full border-2 border-gray-100 text-gray-400 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-gray-50 transition-all"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
 
       {selectedEquip && (
         <div className="animate-in slide-in-from-top-4 duration-300">

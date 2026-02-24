@@ -6,14 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "^19.2.3",
-    "recharts": "^3.7.0",
-    "react-dom": "^19.2.3",
+    "@google/genai": "^1.39.0",
     "qrcode.react": "^4.2.0",
-    "@google/genai": "^1.39.0"
+    "react": "^19.2.3",
+    "react-barcode": "^1.6.1",
+    "react-dom": "^19.2.3",
+    "recharts": "^3.7.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
