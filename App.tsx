@@ -50,7 +50,7 @@ const App: React.FC = () => {
           {renderView()}
         </div>
 
-        <footer className="mt-auto border-t border-gray-100 py-8 bg-white text-center">
+        <footer className="mt-auto border-t border-gray-100 py-8 bg-white text-center no-print">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
             CRM TÉCNICO V2.5 Professional © 2024 - <span className="text-[#658C2A]">Eficiencia y Control</span>
           </p>

@@ -543,11 +543,7 @@ ACTUALIZADO: ${item.updatedAt || item.createdAt}`;
 
       {printingItem && (
         <div id="print-section" className="hidden flex-col items-center justify-center bg-white p-10 font-sans text-black">
-          <div className={`border-4 border-black p-6 rounded-3xl flex flex-col items-center gap-6 max-w-[400px] ${printingItem.isDecommissioned ? 'bg-red-50' : ''}`}>
-            <div className={`text-white px-4 py-1 rounded-full mb-2 ${printingItem.isDecommissioned ? 'bg-red-700' : 'bg-black'}`}>
-               <span className="text-[10px] font-black tracking-widest uppercase">{printingItem.isDecommissioned ? 'EQUIPO DADO DE BAJA' : 'Propiedad Técnica CRM'}</span>
-            </div>
-            
+          <div className="border-4 border-black p-6 rounded-3xl flex flex-col items-center gap-6 max-w-[400px]">
             <QRCodeSVG 
               value={getQRValue(printingItem)} 
               size={200} 
@@ -565,19 +561,8 @@ ACTUALIZADO: ${item.updatedAt || item.createdAt}`;
               />
             </div>
             
-            <div className="text-center w-full">
-              <p className="text-4xl font-black tracking-tighter mb-1">{(printingItem.inventoryId && String(printingItem.inventoryId) !== 'NaN' && String(printingItem.inventoryId).trim() !== '') ? printingItem.inventoryId : 'SIN INVENTARIO'}</p>
-              <p className="text-lg font-bold uppercase border-t border-black pt-2">{printingItem.name}</p>
-              <div className="flex flex-col gap-1 mt-2">
-                <p className="text-xs font-bold text-gray-600">S/N: {printingItem.serialNumber || 'N/A'}</p>
-                <p className="text-sm font-medium text-gray-600">
-                  {printingItem.service} — {printingItem.area}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 flex flex-col items-center border-t border-dotted border-gray-400 pt-4 w-full">
-               <p className="text-[9px] font-bold text-gray-500 uppercase">Escanee para Ficha Técnica Completa</p>
+            <div className="text-center w-full border-t border-black pt-4">
+              <p className="text-lg font-bold uppercase">{printingItem.name}</p>
             </div>
           </div>
         </div>
