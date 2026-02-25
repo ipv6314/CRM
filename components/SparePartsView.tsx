@@ -96,16 +96,8 @@ const SparePartsView: React.FC = () => {
     reader.readAsText(file);
   };
 
-  const handleExport = () => {
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + "Nombre,Stock Actual,Stock Minimo,Estado\n"
-      + parts.map(p => `${p.name},${p.currentStock},${p.minStock},${p.currentStock < p.minStock ? 'CRITICO' : 'OK'}`).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "resumen_stock.csv");
-    document.body.appendChild(link);
-    link.click();
+  const handlePrint = () => {
+    window.print();
   };
 
   return (
@@ -115,13 +107,13 @@ const SparePartsView: React.FC = () => {
           <h2 className="text-3xl font-black text-[#181411]">Stock de Repuestos</h2>
           <p className="text-[#897161]">Control de existencias e historial de movimientos</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 no-print">
           <button 
-            onClick={handleExport}
+            onClick={handlePrint}
             className="border-2 border-[#658C2A] text-[#658C2A] px-5 h-11 rounded-xl font-bold flex items-center gap-2 hover:bg-green-50 transition-all"
           >
-            <span className="material-symbols-outlined">download</span>
-            Exportar Stock
+            <span className="material-symbols-outlined">print</span>
+            Imprimir Reporte
           </button>
           <button 
             onClick={() => setShowLogs(!showLogs)}

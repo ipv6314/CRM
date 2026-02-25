@@ -21,7 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, onLogout }) => 
   ];
 
   return (
-    <aside className="w-64 border-r border-gray-200 bg-white flex flex-col justify-between p-4 h-screen sticky top-0">
+    <aside className="w-64 border-r border-gray-200 bg-white flex flex-col justify-between p-4 h-screen sticky top-0 no-print">
       <div className="flex flex-col gap-8">
         <div className="flex gap-3 items-center">
           <div className="bg-[#4B7349] rounded-lg p-2 text-white shadow-md">
