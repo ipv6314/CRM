@@ -10,6 +10,8 @@ const SparePartsView: React.FC = () => {
   const [editing, setEditing] = useState<SparePart | null>(null);
   const [serialInput, setSerialInput] = useState('');
   const [showLogs, setShowLogs] = useState(false);
+  const [editingMinStockId, setEditingMinStockId] = useState<string | null>(null);
+  const [tempMinStock, setTempMinStock] = useState<number>(0);
   
   const currentUser = DB.getCurrentSession();
   const isAdmin = currentUser?.role === 'admin';
@@ -19,6 +21,13 @@ const SparePartsView: React.FC = () => {
   const refreshData = () => {
     setParts(DB.getSpareParts());
     setLogs(DB.getSparePartLogs());
+  };
+
+  const saveInlineMinStock = (part: SparePart) => {
+    const updatedPart = { ...part, minStock: tempMinStock };
+    DB.saveSparePart(updatedPart, true);
+    refreshData();
+    setEditingMinStockId(null);
   };
 
   const totalStock = useMemo(() => parts.reduce((a, b) => a + b.currentStock, 0), [parts]);
@@ -202,7 +211,46 @@ const SparePartsView: React.FC = () => {
                   </div>
                   <div className="flex flex-col text-right">
                      <span className="text-xs font-bold text-gray-400 uppercase tracking-tighter">Mín.</span>
-                     <span className="font-bold text-gray-600">{part.minStock}</span>
+                     {editingMinStockId === part.id ? (
+                       <div className="flex items-center gap-1 justify-end mt-1">
+                         <input
+                           type="number"
+                           className="w-14 h-7 text-xs text-right border border-gray-300 rounded px-1 px-1.5 focus:outline-none focus:ring-1 focus:ring-[#658C2A] font-bold"
+                           value={tempMinStock}
+                           onChange={e => setTempMinStock(Math.max(0, parseInt(e.target.value) || 0))}
+                           autoFocus
+                           onKeyDown={e => {
+                             if (e.key === 'Enter') {
+                               saveInlineMinStock(part);
+                             } else if (e.key === 'Escape') {
+                               setEditingMinStockId(null);
+                             }
+                           }}
+                         />
+                         <button 
+                           type="button"
+                           onClick={() => saveInlineMinStock(part)}
+                           className="text-[#658C2A] hover:bg-green-50 p-0.5 rounded transition-all material-symbols-outlined text-sm font-black"
+                         >
+                           check
+                         </button>
+                       </div>
+                     ) : (
+                       <div className="flex items-center gap-1 justify-end group/item font-bold text-gray-600 mt-1">
+                         <span className="text-lg font-extrabold">{part.minStock}</span>
+                         <button
+                           type="button"
+                           onClick={() => {
+                             setEditingMinStockId(part.id);
+                             setTempMinStock(part.minStock);
+                           }}
+                           className="opacity-0 group-hover:opacity-100 group-hover/item:opacity-100 text-gray-400 hover:text-[#658C2A] hover:bg-green-50 p-1 rounded transition-all material-symbols-outlined text-sm"
+                           title="Establecer Stock Crítico"
+                         >
+                           edit
+                         </button>
+                       </div>
+                     )}
                   </div>
                 </div>
                 
@@ -340,6 +388,16 @@ const SparePartsView: React.FC = () => {
                 </div>
               ) : (
                 <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-black uppercase text-gray-400">Stock Crítico (Mín)</label>
+                    <input 
+                      type="number" 
+                      className="h-12 rounded-xl border-gray-100 bg-gray-50 focus:ring-2 focus:ring-[#658C2A] focus:border-transparent transition-all" 
+                      value={editing.minStock} 
+                      onChange={e => setEditing({...editing, minStock: parseInt(e.target.value) || 0})}
+                      required
+                    />
+                  </div>
                   <div className="flex flex-col gap-2">
                     <label className="text-xs font-black uppercase text-gray-400">Ingreso de Números de Serie</label>
                     <div className="flex gap-2">

@@ -11,6 +11,7 @@ const SupportView: React.FC = () => {
   const [showNewTicket, setShowNewTicket] = useState(false);
   const [globalTickets, setGlobalTickets] = useState<SupportTicket[]>(DB.getTickets());
   const [printingDictamen, setPrintingDictamen] = useState<SupportTicket | null>(null);
+  const [viewingTicket, setViewingTicket] = useState<SupportTicket | null>(null);
   
   const equipment = DB.getEquipment();
   const spareParts = DB.getSpareParts();
@@ -267,15 +268,26 @@ const SupportView: React.FC = () => {
                           <p className="text-sm text-gray-600 line-clamp-2 leading-snug italic">"{ticket.description}"</p>
                         </td>
                         <td className="px-6 py-5 text-right">
-                          {ticket.type === 'Baja' && ticket.dictamen && (
-                            <button 
-                              onClick={() => handlePrintDictamen(ticket)}
-                              className="text-[#4B7349] hover:bg-green-50 p-2 rounded-lg flex items-center gap-1 ml-auto text-[10px] font-black uppercase"
+                          <div className="flex gap-2 justify-end items-center">
+                            <button
+                              onClick={() => setViewingTicket(ticket)}
+                              className="text-[#4B7349] hover:bg-green-50/50 p-2 rounded-lg flex items-center gap-1 text-[10px] font-black uppercase transition-all"
+                              title="Ver Detalle Soporte"
                             >
-                              <span className="material-symbols-outlined text-sm">print</span>
-                              Dictamen
+                              <span className="material-symbols-outlined text-sm">visibility</span>
+                              Detalle
                             </button>
-                          )}
+                            {ticket.type === 'Baja' && ticket.dictamen && (
+                              <button 
+                                onClick={() => handlePrintDictamen(ticket)}
+                                className="text-red-600 hover:bg-red-50 p-2 rounded-lg flex items-center gap-1 text-[10px] font-black uppercase transition-all"
+                                title="Imprimir Dictamen"
+                              >
+                                <span className="material-symbols-outlined text-sm">print</span>
+                                Dictamen
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -293,6 +305,16 @@ const SupportView: React.FC = () => {
           onSubmit={handleCreateTicket} 
           parts={spareParts}
           equipment={selectedEquip}
+        />
+      )}
+
+      {viewingTicket && (
+        <TicketDetailsModal 
+          ticket={viewingTicket} 
+          onClose={() => setViewingTicket(null)} 
+          equipmentList={equipment} 
+          partsList={spareParts}
+          onPrintDictamen={handlePrintDictamen}
         />
       )}
 
@@ -604,6 +626,162 @@ const NewTicketModal = ({ onClose, onSubmit, parts, equipment }: { onClose: () =
            </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const TicketDetailsModal = ({ 
+  ticket, 
+  onClose, 
+  equipmentList, 
+  partsList, 
+  onPrintDictamen 
+}: { 
+  ticket: SupportTicket; 
+  onClose: () => void; 
+  equipmentList: Equipment[]; 
+  partsList: SparePart[]; 
+  onPrintDictamen: (t: SupportTicket) => void; 
+}) => {
+  const equip = equipmentList.find(e => e.id === ticket.equipmentId);
+
+  return (
+    <div className="fixed inset-0 bg-[#181411]/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200 no-print">
+      <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 max-h-[90vh]">
+        <div className="p-6 text-white flex justify-between items-center bg-[#4B7349]">
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-2xl">info</span>
+            <div>
+              <h3 className="font-black uppercase tracking-wider text-sm">Detalle de Intervención</h3>
+              <p className="text-white/70 text-[10px] font-black uppercase tracking-tight">{ticket.date} • {ticket.type}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="size-8 rounded-full hover:bg-white/10 transition-all flex items-center justify-center material-symbols-outlined">close</button>
+        </div>
+
+        <div className="p-8 flex flex-col gap-6 overflow-y-auto no-scrollbar">
+          {/* General info */}
+          <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-150">
+            <div>
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Técnico Responsable</span>
+              <span className="text-sm font-extrabold text-[#3D3D3D]">{ticket.technician}</span>
+            </div>
+            <div>
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Fecha de Registro</span>
+              <span className="text-sm font-extrabold text-[#3D3D3D]">{ticket.date}</span>
+            </div>
+          </div>
+
+          {/* Equipment details */}
+          <div className="flex flex-col gap-2">
+            <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Equipo Vinculado</h4>
+            {equip ? (
+              <div className="bg-green-50/20 border border-green-150 p-4 rounded-2xl flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="text-xs font-black text-[#4B7349] block">{equip.inventoryId || 'SIN INVENTARIO'}</span>
+                    <span className="text-sm font-extrabold text-[#3D3D3D]">{equip.name}</span>
+                  </div>
+                  <span className="text-xs font-bold text-gray-400">{equip.brand} {equip.model}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-2 text-xs">
+                  <div>
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Efector / Establecimiento</span>
+                    <p className="font-bold text-[#3D3D3D]">{equip.effector}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-gray-400 uppercase block">Servicio / Área</span>
+                    <p className="font-bold text-[#3D3D3D]">{equip.service} - {equip.area}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-red-500 font-bold bg-red-50 p-3 rounded-xl border border-red-100">Este equipo ya no existe en el sistema.</p>
+            )}
+          </div>
+
+          {/* Actuación Técnica */}
+          <div className="flex flex-col gap-2">
+            <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Informe / Descripción del Problema</h4>
+            <div className="bg-gray-50 border border-gray-150 p-4 rounded-xl">
+              <p className="text-sm text-gray-700 italic font-medium whitespace-pre-wrap">"{ticket.description}"</p>
+            </div>
+          </div>
+
+          {/* Replaced parts */}
+          <div className="flex flex-col gap-2">
+            <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Repuestos Utilizados</h4>
+            {ticket.affectedParts && ticket.affectedParts.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {ticket.affectedParts.map((ap, idx) => {
+                  const part = partsList.find(p => p.id === ap.partId);
+                  return (
+                    <div key={idx} className="bg-white border border-gray-100 flex items-center justify-between p-3 rounded-xl shadow-xs">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-gray-850 uppercase">{part?.name || 'Repuesto Desconocido'}</span>
+                        {ap.serial && (
+                          <span className="text-[10px] font-mono text-[#4B7349] font-black bg-green-50 px-2 py-0.5 rounded border border-green-150 w-fit mt-1">
+                            S/N: {ap.serial}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[9px] font-black text-gray-400 uppercase block leading-none mb-1">CANTIDAD</span>
+                        <span className="text-sm font-extrabold text-[#3D3D3D]">{ap.quantity}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 italic">No se utilizaron repuestos de stock en esta intervención.</p>
+            )}
+          </div>
+
+          {/* Dictamen details if Baja */}
+          {ticket.type === 'Baja' && ticket.dictamen && (
+            <div className="flex flex-col gap-4 bg-red-50/30 p-4 rounded-xl border border-red-100">
+              <h4 className="text-[10px] font-black uppercase text-red-600 tracking-wider">Detalles de Baja Definitiva</h4>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-[9px] font-bold text-red-400 uppercase">Solicitante</span>
+                  <p className="font-bold text-[#3D3D3D]">{ticket.dictamen.solicitante}</p>
+                </div>
+                <div>
+                  <span className="text-[9px] font-bold text-red-400 uppercase">Legajo</span>
+                  <p className="font-bold text-[#3D3D3D]">{ticket.dictamen.legajo}</p>
+                </div>
+              </div>
+              {ticket.dictamen.image && (
+                <div className="mt-2 border rounded-xl overflow-hidden max-h-40 bg-white shadow-sm">
+                  <img src={ticket.dictamen.image} className="w-full h-full object-contain" alt="Adjunto de Baja" />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="p-6 bg-gray-50 border-t flex gap-3 justify-end">
+          {ticket.type === 'Baja' && ticket.dictamen && (
+            <button 
+              onClick={() => {
+                onPrintDictamen(ticket);
+                onClose();
+              }}
+              className="px-6 h-12 bg-red-650 hover:bg-red-700 text-white rounded-xl font-bold flex items-center gap-2 text-xs uppercase shadow-lg shadow-red-900/20 active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-sm">print</span>
+              Imprimir Dictamen
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="px-6 h-12 bg-[#3D3D3D] hover:bg-black text-white rounded-xl font-bold text-xs uppercase"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
