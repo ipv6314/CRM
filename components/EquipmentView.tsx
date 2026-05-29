@@ -85,12 +85,57 @@ const EquipmentView: React.FC = () => {
     });
   }, [items, searchTerm, sortField, sortOrder]);
 
+  const formatNameAllButDigitsToUppercase = (nameStr: string): string => {
+    if (!nameStr) return '';
+    return nameStr.split('').map(char => {
+      if (char >= '0' && char <= '9') {
+        return char;
+      }
+      return char.toUpperCase();
+    }).join('');
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing) return;
+
+    // The name of the equipment must have all non-digit characters in uppercase
+    const formattedName = formatNameAllButDigitsToUppercase(editing.name);
+
+    // MAC LAN is mandatory
+    const macLanVal = editing.macLan?.trim();
+    if (!macLanVal) {
+      alert("La dirección MAC LAN es obligatoria.");
+      return;
+    }
+
+    // Validate duplicate MAC address
+    const allEquip = DB.getEquipment();
+    const isDuplicate = allEquip.some(eq => {
+      if (eq.id === editing.id) return false;
+      const otherMac1 = eq.macLan?.trim()?.toLowerCase();
+      const otherMac2 = eq.macWireless?.trim()?.toLowerCase();
+      
+      const currentMac1 = macLanVal.toLowerCase();
+      const currentMac2 = editing.macWireless?.trim()?.toLowerCase();
+      
+      return (
+        (otherMac1 && otherMac1 === currentMac1) ||
+        (otherMac2 && otherMac2 === currentMac1) ||
+        (currentMac2 && otherMac1 && otherMac1 === currentMac2) ||
+        (currentMac2 && otherMac2 && otherMac2 === currentMac2)
+      );
+    });
+
+    if (isDuplicate) {
+      alert("Error: Ya existe un equipo con esa dirección MAC (LAN o Wireless). No se permiten direcciones MAC duplicadas.");
+      return;
+    }
+
     const now = new Date().toISOString().split('T')[0];
     const itemToSave = { 
       ...editing, 
+      name: formattedName,
       id: editing.id || Math.random().toString(36).substr(2, 9),
       createdAt: editing.createdAt || now,
       updatedAt: now 
@@ -137,6 +182,15 @@ const EquipmentView: React.FC = () => {
 
         const now = new Date().toISOString().split('T')[0];
         let count = 0;
+        let skippedEmptyMac = 0;
+        let skippedDuplicateMac = 0;
+
+        const existingItems = DB.getEquipment();
+        const existingMacs = new Set<string>();
+        existingItems.forEach(eq => {
+          if (eq.macLan) existingMacs.add(eq.macLan.trim().toLowerCase());
+          if (eq.macWireless) existingMacs.add(eq.macWireless.trim().toLowerCase());
+        });
 
         json.forEach((row) => {
           const getVal = (keys: string[]) => {
@@ -148,6 +202,31 @@ const EquipmentView: React.FC = () => {
           const invIdFromCsv = getVal(['inventoryid', 'inventario', 'id']);
           const finalInvId = invIdFromCsv === 'N/A' ? '' : invIdFromCsv.replace(/[.,\s]/g, '');
 
+          const mac1 = getVal(['maclan', 'mac']).trim();
+          const mac2 = getVal(['macwireless', 'macw']).trim();
+
+          const cleanMac1 = mac1 === 'N/A' ? '' : mac1;
+          const cleanMac2 = mac2 === 'N/A' ? '' : mac2;
+
+          // MAC LAN is mandatory
+          if (!cleanMac1) {
+            skippedEmptyMac++;
+            return;
+          }
+
+          // Check for duplicate MAC addresses
+          const isDup = existingMacs.has(cleanMac1.toLowerCase()) || 
+                        (cleanMac2 && existingMacs.has(cleanMac2.toLowerCase()));
+          
+          if (isDup) {
+            skippedDuplicateMac++;
+            return;
+          }
+
+          // Add to current session to prevent further duplicates in this same batch
+          existingMacs.add(cleanMac1.toLowerCase());
+          if (cleanMac2) existingMacs.add(cleanMac2.toLowerCase());
+
           const newEquip: Equipment = {
             id: Math.random().toString(36).substr(2, 9),
             inventoryId: finalInvId,
@@ -155,7 +234,7 @@ const EquipmentView: React.FC = () => {
             service: getVal(['service', 'servicio']),
             area: getVal(['area']),
             consultorio: getVal(['consultorio', 'puesto', 'box']),
-            name: getVal(['name', 'nombre', 'equipo']),
+            name: formatNameAllButDigitsToUppercase(getVal(['name', 'nombre', 'equipo'])),
             brand: getVal(['brand', 'marca']),
             model: getVal(['model', 'modelo']),
             type: getVal(['type', 'tipo']),
@@ -167,8 +246,8 @@ const EquipmentView: React.FC = () => {
             ramCapacity: getVal(['ramcapacity', 'ram', 'capacidadram']),
             storageType: getVal(['storagetype', 'tipoalmacenamiento']),
             storageCapacity: getVal(['storagecapacity', 'capacidad']),
-            macLan: getVal(['maclan', 'mac']),
-            macWireless: getVal(['macwireless', 'macw']),
+            macLan: cleanMac1,
+            macWireless: cleanMac2,
             serialNumber: getVal(['serialnumber', 'serie', 'nserie', 'serial']),
             comments: getVal(['comments', 'comentarios']),
             createdAt: now,
@@ -181,7 +260,11 @@ const EquipmentView: React.FC = () => {
 
         setItems(DB.getEquipment());
         setLogs(DB.getEquipmentLogs());
-        alert(`Se han importado ${count} equipos correctamente desde el CSV.`);
+        
+        let msg = `Se han importado ${count} equipos correctamente desde el CSV.`;
+        if (skippedEmptyMac > 0) msg += `\nSe omitieron ${skippedEmptyMac} registros por no tener dirección MAC (obligatoria).`;
+        if (skippedDuplicateMac > 0) msg += `\nSe omitieron ${skippedDuplicateMac} registros por dirección MAC duplicada.`;
+        alert(msg);
       } catch (error) {
         console.error("Error al procesar el archivo CSV:", error);
         alert("Error al procesar el archivo. Asegúrese de que sea un CSV válido.");
@@ -621,7 +704,7 @@ ACTUALIZADO: ${item.updatedAt || item.createdAt}`;
                   <h4 className="text-xs font-black uppercase text-gray-400 tracking-widest">Conectividad y Comentarios</h4>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <Input label="Dirección MAC LAN" value={editing.macLan || ''} onChange={(v: string) => setEditing({...editing, macLan: v})} placeholder="XX:XX:XX:XX:XX:XX (Opcional)" />
+                  <Input label="Dirección MAC LAN *" value={editing.macLan || ''} onChange={(v: string) => setEditing({...editing, macLan: v})} placeholder="XX:XX:XX:XX:XX:XX (Requerido)" required />
                   <Input label="Dirección MAC Wireless" value={editing.macWireless || ''} onChange={(v: string) => setEditing({...editing, macWireless: v})} placeholder="XX:XX:XX:XX:XX:XX (Opcional)" />
                 </div>
                 <div className="flex flex-col gap-2">

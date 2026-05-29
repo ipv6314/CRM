@@ -13,6 +13,25 @@ const SparePartsView: React.FC = () => {
   const [editingMinStockId, setEditingMinStockId] = useState<string | null>(null);
   const [tempMinStock, setTempMinStock] = useState<number>(0);
   
+  // States for custom print reports
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printConfig, setPrintConfig] = useState<{
+    type: 'category' | 'part' | 'all-cats';
+    selectedCategory: string;
+    selectedPartId: string;
+  }>({
+    type: 'all-cats',
+    selectedCategory: '',
+    selectedPartId: ''
+  });
+  const [printingReport, setPrintingReport] = useState<any | null>(null);
+
+  const categoriesList = useMemo(() => {
+    const cats = parts.map(p => p.category?.trim() || 'General');
+    const uniqueCats = Array.from(new Set(cats));
+    return uniqueCats.filter(Boolean).sort();
+  }, [parts]);
+
   const currentUser = DB.getCurrentSession();
   const isAdmin = currentUser?.role === 'admin';
   const serialFieldRef = useRef<HTMLInputElement>(null);
@@ -105,8 +124,58 @@ const SparePartsView: React.FC = () => {
     reader.readAsText(file);
   };
 
+  const getCategoryStats = () => {
+    const stats: Record<string, { existence: number; consumed: number; partsCount: number }> = {};
+    
+    // Initialize from existing parts
+    parts.forEach(part => {
+      const cat = part.category?.trim() || 'General';
+      if (!stats[cat]) {
+        stats[cat] = { existence: 0, consumed: 0, partsCount: 0 };
+      }
+      stats[cat].existence += part.currentStock;
+      stats[cat].partsCount += 1;
+    });
+
+    // Calculate consumed
+    const tickets = DB.getTickets();
+    tickets.forEach(ticket => {
+      if (ticket.affectedParts) {
+        ticket.affectedParts.forEach(ap => {
+          const part = parts.find(p => p.id === ap.partId);
+          if (part) {
+            const cat = part.category?.trim() || 'General';
+            if (!stats[cat]) {
+              stats[cat] = { existence: 0, consumed: 0, partsCount: 0 };
+            }
+            stats[cat].consumed += ap.quantity;
+          }
+        });
+      }
+    });
+
+    return stats;
+  };
+
   const handlePrint = () => {
-    window.print();
+    setPrintConfig({
+      type: 'all-cats',
+      selectedCategory: categoriesList[0] || 'General',
+      selectedPartId: parts[0]?.id || ''
+    });
+    setShowPrintModal(true);
+  };
+
+  const triggerPrintReport = () => {
+    setPrintingReport({
+      type: printConfig.type,
+      selectedCategory: printConfig.selectedCategory || categoriesList[0] || 'General',
+      selectedPartId: printConfig.selectedPartId || parts[0]?.id || ''
+    });
+    setShowPrintModal(false);
+    setTimeout(() => {
+      window.print();
+    }, 500);
   };
 
   return (
@@ -133,7 +202,7 @@ const SparePartsView: React.FC = () => {
           </button>
           {isAdmin && (
             <button 
-              onClick={() => setEditing({ id: '', name: '', currentStock: 0, minStock: 0, isSerialized: false, serials: [] })}
+              onClick={() => setEditing({ id: '', name: '', category: '', currentStock: 0, minStock: 0, isSerialized: false, serials: [] })}
               className="bg-[#658C2A] text-white px-6 h-11 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:bg-[#457330] transition-all"
             >
               <span className="material-symbols-outlined">add_box</span>
@@ -180,11 +249,18 @@ const SparePartsView: React.FC = () => {
                 <div className="flex justify-between items-start">
                   <div className="flex flex-col gap-1">
                     <h4 className="font-black text-[#3D3D3D] leading-tight">{part.name}</h4>
-                    {part.isSerialized && (
-                      <span className="bg-green-100 text-[#4B7349] text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-green-200 w-fit">
-                        Trazabilidad Serial
-                      </span>
-                    )}
+                    <div className="flex flex-wrap gap-1 mt-1 font-sans">
+                      {part.category && (
+                        <span className="bg-blue-50 text-blue-700 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-blue-100 w-fit">
+                          {part.category}
+                        </span>
+                      )}
+                      {part.isSerialized && (
+                        <span className="bg-green-50 text-[#4B7349] text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-green-200 w-fit">
+                          S/N
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {isAdmin && (
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -335,6 +411,18 @@ const SparePartsView: React.FC = () => {
                 />
               </div>
 
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-black uppercase text-gray-400">Categoría</label>
+                <input 
+                  type="text" 
+                  className="h-12 rounded-xl border-gray-100 bg-gray-50 focus:ring-2 focus:ring-[#658C2A] focus:border-transparent transition-all" 
+                  placeholder="Ej: Conectividad, Almacenamiento, Pantallas"
+                  value={editing.category || ''} 
+                  onChange={e => setEditing({...editing, category: e.target.value})}
+                  required
+                />
+              </div>
+
               <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-4">
                 <label className="text-xs font-black uppercase text-gray-400">Metodología de Carga</label>
                 <div className="grid grid-cols-2 gap-4">
@@ -472,6 +560,303 @@ const SparePartsView: React.FC = () => {
               </button>
             </form>
           </div>
+        </div>
+      )}
+
+      {showPrintModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200 no-print">
+          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col">
+            <div className="p-6 bg-[#658C2A] text-white flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined">print</span>
+                <h3 className="font-black uppercase tracking-widest text-sm">Opciones de Reporte</h3>
+              </div>
+              <button onClick={() => setShowPrintModal(false)} className="material-symbols-outlined hover:rotate-90 transition-transform">close</button>
+            </div>
+
+            <div className="p-6 flex flex-col gap-4">
+              <span className="text-[10px] font-black uppercase text-gray-400">Seleccione el Tipo de Reporte</span>
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPrintConfig({ ...printConfig, type: 'all-cats' })}
+                  className={`p-4 rounded-xl border-2 text-left flex items-start gap-3 transition-all ${printConfig.type === 'all-cats' ? 'border-[#658C2A] bg-green-50/20' : 'border-gray-100 hover:bg-gray-50'}`}
+                >
+                  <span className="material-symbols-outlined text-2xl text-[#658C2A]">category</span>
+                  <div>
+                    <h4 className="font-bold text-xs text-[#3D3D3D] uppercase">Todas las Categorías</h4>
+                    <span className="text-[10px] text-gray-400 font-medium">Existencias consolidadas y consumidos históricos</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPrintConfig({ ...printConfig, type: 'category', selectedCategory: printConfig.selectedCategory || categoriesList[0] || 'General' })}
+                  className={`p-4 rounded-xl border-2 text-left flex items-start gap-3 transition-all ${printConfig.type === 'category' ? 'border-[#658C2A] bg-green-50/20' : 'border-gray-100 hover:bg-gray-50'}`}
+                >
+                  <span className="material-symbols-outlined text-2xl text-[#658C2A]">folder_special</span>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-xs text-[#3D3D3D] uppercase">Por Categoría en Particular</h4>
+                    <span className="text-[10px] text-gray-400 font-medium block mb-2">Detalle pormenorizado de una categoría</span>
+                    {printConfig.type === 'category' && (
+                      <select
+                        className="w-full text-xs h-9 border rounded-lg px-2 bg-white"
+                        value={printConfig.selectedCategory}
+                        onChange={(e) => setPrintConfig({ ...printConfig, selectedCategory: e.target.value })}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {categoriesList.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPrintConfig({ ...printConfig, type: 'part', selectedPartId: printConfig.selectedPartId || parts[0]?.id || '' })}
+                  className={`p-4 rounded-xl border-2 text-left flex items-start gap-3 transition-all ${printConfig.type === 'part' ? 'border-[#658C2A] bg-green-50/20' : 'border-gray-100 hover:bg-gray-50'}`}
+                >
+                  <span className="material-symbols-outlined text-2xl text-[#658C2A]">widgets</span>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-xs text-[#3D3D3D] uppercase">Por Repuesto Particular</h4>
+                    <span className="text-[10px] text-gray-400 font-medium block mb-2">Ficha individual y trazabilidad (series)</span>
+                    {printConfig.type === 'part' && (
+                      <select
+                        className="w-full text-xs h-9 border rounded-lg px-2 bg-white"
+                        value={printConfig.selectedPartId}
+                        onChange={(e) => setPrintConfig({ ...printConfig, selectedPartId: e.target.value })}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {parts.map(p => (
+                          <option key={p.id} value={p.id}>{p.name} ({p.category || 'Sin Cat'})</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 bg-gray-50 border-t flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPrintModal(false)}
+                className="px-4 py-2 border rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 uppercase"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={triggerPrintReport}
+                className="px-5 py-2 bg-[#658C2A] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-[#457330] uppercase"
+              >
+                <span className="material-symbols-outlined text-sm">print</span>
+                Imprimir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {printingReport && (
+        <div id="print-section" className="hidden bg-white p-8 text-black font-sans min-h-[1050px] flex-col w-full text-left">
+          {(() => {
+            if (printingReport.type === 'category') {
+              const catName = printingReport.selectedCategory;
+              const filteredParts = parts.filter(p => (p.category?.trim() || 'General') === catName);
+              return (
+                <div className="w-full flex flex-col gap-6">
+                  <div className="border-b-4 border-[#4B7349] pb-4 flex justify-between items-end">
+                    <div>
+                      <h1 className="text-2xl font-black uppercase text-gray-800 tracking-tight">CRM Técnico - Reporte de Stock</h1>
+                      <p className="text-xs font-bold text-[#4B7349] uppercase tracking-wider">Detalle por Categoría de Repuestos</p>
+                    </div>
+                    <div className="text-right text-xs text-gray-400 font-bold uppercase">
+                      <p>Fecha: {new Date().toLocaleDateString('es-AR')}</p>
+                      <p>Categoría: {catName}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <h2 className="text-lg font-bold text-gray-700 uppercase">Resumen de la Categoría: {catName}</h2>
+                    <p className="text-xs text-gray-500">Se listan todos los repuestos pertenecientes a la categoría seleccionada, su estado de stock y de trazabilidad.</p>
+                  </div>
+
+                  <table className="w-full border-collapse mt-4 text-xs">
+                    <thead>
+                      <tr className="bg-gray-100 border-b-2 border-gray-300 text-left">
+                        <th className="px-4 py-3 font-black text-gray-600 uppercase">Repuesto</th>
+                        <th className="px-4 py-3 font-black text-gray-600 uppercase">Trazabilidad</th>
+                        <th className="px-4 py-3 font-black text-gray-600 uppercase text-right">Mínimo Crítico</th>
+                        <th className="px-4 py-3 font-black text-gray-600 uppercase text-right">Existencia Actual</th>
+                        <th className="px-4 py-3 font-black text-gray-600 uppercase text-right">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredParts.map(p => {
+                        const isCritical = p.currentStock < p.minStock;
+                        return (
+                          <tr key={p.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 font-bold text-gray-800">{p.name}</td>
+                            <td className="px-4 py-3 font-medium text-gray-500">{p.isSerialized ? 'Individual (Serial)' : 'Por Lote'}</td>
+                            <td className="px-4 py-3 font-bold text-right text-gray-600">{p.minStock}</td>
+                            <td className={`px-4 py-3 font-black text-right text-lg ${isCritical ? 'text-red-600' : 'text-[#4B7349]'}`}>{p.currentStock}</td>
+                            <td className="px-4 py-3 font-black text-right uppercase">
+                              <span className={isCritical ? 'text-red-600' : 'text-[#4B7349]'}>
+                                {isCritical ? 'BAJO MÍNIMO' : 'NORMAL'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  <div className="mt-8 border-t border-gray-100 pt-4 flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
+                    <span>Ateneo CRM Técnico v2.5 Suite</span>
+                    <span>Página 1 de 1</span>
+                  </div>
+                </div>
+              );
+            }
+
+            if (printingReport.type === 'part') {
+              const part = parts.find(p => p.id === printingReport.selectedPartId);
+              if (!part) return <p className="text-red-500 font-bold">Error: Repuesto no seleccionado o inexistente.</p>;
+
+              const isCritical = part.currentStock < part.minStock;
+              let partConsumed = 0;
+              const tickets = DB.getTickets();
+              tickets.forEach(t => {
+                if (t.affectedParts) {
+                  t.affectedParts.forEach(ap => {
+                    if (ap.partId === part.id) partConsumed += ap.quantity;
+                  });
+                }
+              });
+
+              return (
+                <div className="w-full flex flex-col gap-6">
+                  <div className="border-b-4 border-[#4B7349] pb-4 flex justify-between items-end">
+                    <div>
+                      <h1 className="text-2xl font-black uppercase text-gray-800 tracking-tight">CRM Técnico - Reporte de Stock</h1>
+                      <p className="text-xs font-bold text-[#4B7349] uppercase tracking-wider">Detalle de Repuesto Particular</p>
+                    </div>
+                    <div className="text-right text-xs text-gray-400 font-bold uppercase">
+                      <p>Fecha: {new Date().toLocaleDateString('es-AR')}</p>
+                      <p>ID: {part.id}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-6 rounded-2xl border flex flex-col gap-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Categoría</span>
+                        <span className="text-[#4B7349] font-black uppercase tracking-wide text-xs">{part.category || 'General'}</span>
+                        <h2 className="text-xl font-black text-gray-800 uppercase mt-1">{part.name}</h2>
+                      </div>
+                      <span className={`px-3 py-1 text-xs font-black uppercase rounded-full ${isCritical ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-green-50 text-[#4B7349] border border-green-200'}`}>
+                        {isCritical ? 'BAJO MÍNIMO' : 'STOCK CORRECTO'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-4 mt-2">
+                      <div className="bg-white p-3 rounded-xl border text-center">
+                        <span className="text-[9px] font-black text-gray-400 uppercase block">Existencia Actual</span>
+                        <span className="text-xl font-black text-gray-800">{part.currentStock}</span>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border text-center">
+                        <span className="text-[9px] font-black text-gray-400 uppercase block">Stock Crítico Mín.</span>
+                        <span className="text-xl font-black text-gray-800">{part.minStock}</span>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border text-center">
+                        <span className="text-[9px] font-black text-gray-400 uppercase block">Histórico Consumidos</span>
+                        <span className="text-xl font-black text-gray-800">{partConsumed}</span>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border text-center">
+                        <span className="text-[9px] font-black text-gray-400 uppercase block">Tipo Trazabilidad</span>
+                        <span className="text-[10px] font-black text-gray-600 uppercase block mt-1">{part.isSerialized ? 'Números de Serie' : 'Por Lote'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {part.isSerialized && part.serials && part.serials.length > 0 && (
+                    <div className="flex flex-col gap-3">
+                      <h3 className="text-sm font-black text-gray-600 uppercase tracking-wider">Listado de Números de Serie Disponibles en Stock:</h3>
+                      <div className="grid grid-cols-3 gap-2 border p-4 rounded-xl">
+                        {part.serials.map(s => (
+                          <div key={s} className="bg-gray-50 border p-2 text-center text-xs font-mono font-bold rounded">
+                            {s}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-8 border-t border-gray-100 pt-4 flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
+                    <span>Ateneo CRM Técnico v2.5 Suite</span>
+                    <span>Página 1 de 1</span>
+                  </div>
+                </div>
+              );
+            }
+
+            if (printingReport.type === 'all-cats') {
+              const stats = getCategoryStats();
+              return (
+                <div className="w-full flex flex-col gap-6">
+                  <div className="border-b-4 border-[#4B7349] pb-4 flex justify-between items-end">
+                    <div>
+                      <h1 className="text-2xl font-black uppercase text-gray-800 tracking-tight">CRM Técnico - Reporte de Stock</h1>
+                      <p className="text-xs font-bold text-[#4B7349] uppercase tracking-wider">Consolidado Total por Categorías</p>
+                    </div>
+                    <div className="text-right text-xs text-gray-400 font-bold uppercase">
+                      <p>Fecha: {new Date().toLocaleDateString('es-AR')}</p>
+                      <p>Módulo de Control</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <h2 className="text-lg font-bold text-gray-700 uppercase">Resumen de Existencias y Consumos</h2>
+                    <p className="text-xs text-gray-500">Este reporte resume el stock consolidado (repuestos en existencia) y los consumos (repuestos históricamente utilizados en soporte técnico) agrupados por cada una de las categorías registradas en el sistema.</p>
+                  </div>
+
+                  <table className="w-full border-collapse mt-4 text-xs">
+                    <thead>
+                      <tr className="bg-gray-100 border-b-2 border-gray-300 text-left">
+                        <th className="px-4 py-3 font-black text-gray-600 uppercase">Categoría</th>
+                        <th className="px-4 py-3 font-black text-gray-600 uppercase text-center">Repuestos Registrados</th>
+                        <th className="px-4 py-3 font-black text-gray-600 uppercase text-right">Existencias Disponibles</th>
+                        <th className="px-4 py-3 font-black text-gray-600 uppercase text-right">Histórico Consumidos</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {Object.keys(stats).map(catName => {
+                        const s = stats[catName];
+                        return (
+                          <tr key={catName} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 font-black text-gray-850 uppercase">{catName}</td>
+                            <td className="px-4 py-3 font-bold text-center text-gray-650">{s.partsCount}</td>
+                            <td className="px-4 py-3 font-black text-right text-lg text-emerald-800">{s.existence}</td>
+                            <td className="px-4 py-3 font-black text-right text-lg text-amber-700">{s.consumed}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  <div className="mt-8 border-t border-gray-100 pt-4 flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
+                    <span>Ateneo CRM Técnico v2.5 Suite</span>
+                    <span>Página 1 de 1</span>
+                  </div>
+                </div>
+              );
+            }
+
+            return null;
+          })()}
         </div>
       )}
     </div>

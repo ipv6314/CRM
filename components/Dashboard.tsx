@@ -16,6 +16,67 @@ const Dashboard: React.FC = () => {
   const [activeEffector, setActiveEffector] = useState(effectors[0] || '');
   const [decommissionedEffector, setDecommissionedEffector] = useState(effectors[0] || '');
 
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(1); // Primero del mes actual
+    return d.toISOString().split('T')[0];
+  });
+  const [dateTo, setDateTo] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+  const [printingDashboardReport, setPrintingDashboardReport] = useState<any | null>(null);
+
+  const parseTicketDate = (dateStr: string) => {
+    if (!dateStr) return new Date();
+    if (dateStr.includes('/')) {
+      const [day, month, year] = dateStr.split('/');
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    }
+    return new Date(dateStr);
+  };
+
+  const parseInputDate = (dateStr: string) => {
+    if (!dateStr) return null;
+    const [year, month, day] = dateStr.split('-');
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  };
+
+  const getExportMetrics = () => {
+    const dFrom = parseInputDate(dateFrom);
+    const dTo = parseInputDate(dateTo);
+    if (dFrom) dFrom.setHours(0, 0, 0, 0);
+    if (dTo) dTo.setHours(23, 59, 59, 999);
+
+    const filteredTickets = tickets.filter(t => {
+      const tDate = parseTicketDate(t.date);
+      if (dFrom && tDate < dFrom) return false;
+      if (dTo && tDate > dTo) return false;
+      return true;
+    });
+
+    const totalActivos = equipment.filter(e => !e.isDecommissioned).length;
+    const totalIncidencias = filteredTickets.length;
+    
+    // total de incidencias con baja (type === 'Baja')
+    const totalConBaja = filteredTickets.filter(t => t.type === 'Baja').length;
+
+    // Incidencias de actualizacion (subType === 'Actualización')
+    const totalActualizacion = filteredTickets.filter(t => t.subType === 'Actualización' || (t.type === 'Hardware' && t.subType === 'Actualización')).length;
+
+    // incidencias de reparacion (subType === 'Reparación')
+    const totalReparacion = filteredTickets.filter(t => t.subType === 'Reparación' || (t.type === 'Hardware' && t.subType === 'Reparación')).length;
+
+    return {
+      totalActivos,
+      totalIncidencias,
+      totalConBaja,
+      totalActualizacion,
+      totalReparacion,
+      filteredTickets
+    };
+  };
+
   const decommissionedCount = useMemo(() => {
     return equipment.filter(e => e.isDecommissioned).length;
   }, [equipment]);
@@ -52,7 +113,16 @@ const Dashboard: React.FC = () => {
   const PIE_COLORS = [COLORS.primary, COLORS.secondary, COLORS.grey, '#808080'];
 
   const handleExport = () => {
-    window.print();
+    setShowExportModal(true);
+  };
+
+  const triggerPrintDashboardReport = () => {
+    const metrics = getExportMetrics();
+    setPrintingDashboardReport(metrics);
+    setShowExportModal(false);
+    setTimeout(() => {
+      window.print();
+    }, 500);
   };
 
   return (
@@ -153,6 +223,175 @@ const Dashboard: React.FC = () => {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200 no-print font-sans">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
+            <div className="p-6 bg-[#3D3D3D] text-white flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined">picture_as_pdf</span>
+                <h3 className="font-black uppercase tracking-widest text-sm">Exportar Reporte Ejecutivo</h3>
+              </div>
+              <button onClick={() => setShowExportModal(false)} className="material-symbols-outlined hover:rotate-90 transition-transform">close</button>
+            </div>
+
+            <div className="p-6 flex flex-col gap-5">
+              <div className="flex flex-col gap-4">
+                <span className="text-[10px] font-black uppercase text-gray-400">Rango de Fechas Seleccionadas</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] uppercase font-bold text-gray-405">Desde</label>
+                    <input
+                      type="date"
+                      className="border rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#4B7349]"
+                      value={dateFrom}
+                      onChange={e => setDateFrom(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] uppercase font-bold text-gray-405">Hasta</label>
+                    <input
+                      type="date"
+                      className="border rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#4B7349]"
+                      value={dateTo}
+                      onChange={e => setDateTo(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Preview of metrics to be printed */}
+              {(() => {
+                const metrics = getExportMetrics();
+                return (
+                  <div className="bg-gray-50 border p-4 rounded-xl flex flex-col gap-2">
+                    <span className="text-[10px] font-black uppercase text-gray-400 block mb-1">Métricas a Exportar</span>
+                    <div className="flex justify-between text-xs font-medium border-b py-1">
+                      <span className="text-gray-600 font-bold">Total de Activos:</span>
+                      <span className="font-black text-gray-800">{metrics.totalActivos}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-medium border-b py-1">
+                      <span className="text-gray-600 font-bold">Total Incidencias en Período:</span>
+                      <span className="font-black text-gray-800">{metrics.totalIncidencias}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-medium border-b py-1">
+                      <span className="text-gray-600 font-bold">Total Incidencias con Baja:</span>
+                      <span className="font-black text-gray-800">{metrics.totalConBaja}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-medium border-b py-1">
+                      <span className="text-gray-600 font-bold">Incidencias de Actualización:</span>
+                      <span className="font-black text-gray-800">{metrics.totalActualizacion}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-medium py-1">
+                      <span className="text-gray-600 font-bold">Incidencias de Reparación:</span>
+                      <span className="font-black text-gray-800">{metrics.totalReparacion}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="p-6 bg-gray-50 border-t flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowExportModal(false)}
+                className="px-4 py-2 border rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 uppercase"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={triggerPrintDashboardReport}
+                className="px-5 py-2 bg-[#181411] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-black uppercase"
+              >
+                <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+                Generar Reporte
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {printingDashboardReport && (
+        <div id="print-section" className="hidden bg-white p-8 text-black font-sans min-h-[1050px] flex-col w-full text-left">
+          <div className="border-b-4 border-[#3D3D3D] pb-4 flex justify-between items-end">
+            <div>
+              <h1 className="text-2xl font-black uppercase text-gray-800 tracking-tight">CRM Técnico - Reporte Ejecutivo</h1>
+              <p className="text-xs font-bold text-[#4B7349] uppercase tracking-wider">Estadísticas de Gestión y Rendimiento</p>
+            </div>
+            <div className="text-right text-xs text-gray-400 font-bold uppercase">
+              <p>Fecha Generación: {new Date().toLocaleDateString('es-AR')}</p>
+              <p>Rango: {dateFrom ? new Date(dateFrom).toLocaleDateString('es-AR') : 'Inicio'} - {dateTo ? new Date(dateTo).toLocaleDateString('es-AR') : 'Hoy'}</p>
+            </div>
+          </div>
+
+          <div className="my-6">
+            <h2 className="text-base font-black text-gray-700 uppercase tracking-wide mb-1">Métricas Clave del Período Seleccionado</h2>
+            <p className="text-xs text-gray-500">Este reporte resume de manera precisa el inventario consolidado y el volumen histórico de incidencias clasificadas entre las fechas seleccionadas.</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 my-6">
+            <div className="border p-4 rounded-xl bg-gray-50/50">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Total de Activos</span>
+              <span className="text-3xl font-black text-[#181411]">{printingDashboardReport.totalActivos}</span>
+              <p className="text-[9px] text-gray-450 mt-1">Suma total de equipamiento tecnológico activo en circulación.</p>
+            </div>
+            <div className="border p-4 rounded-xl bg-gray-50/50">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Incidencias en Período</span>
+              <span className="text-3xl font-black text-[#181411]">{printingDashboardReport.totalIncidencias}</span>
+              <p className="text-[9px] text-gray-450 mt-1">Total de tickets de soporte creados en el rango seleccionado.</p>
+            </div>
+            <div className="border p-4 rounded-xl bg-gray-50/50">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Incidencias con Baja Técnica</span>
+              <span className="text-3xl font-black text-red-700">{printingDashboardReport.totalConBaja}</span>
+              <p className="text-[9px] text-gray-450 mt-1">Equipos retirados de circulación con veredicto certificado.</p>
+            </div>
+            <div className="border p-4 rounded-xl bg-gray-50/50">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Incidencias de Actualización</span>
+              <span className="text-3xl font-black text-blue-700">{printingDashboardReport.totalActualizacion}</span>
+              <p className="text-[9px] text-gray-450 mt-1">Mejoras de Hardware asignadas para optimizar rendimiento.</p>
+            </div>
+            <div className="border p-4 rounded-xl bg-gray-50/50 col-span-2">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Incidencias de Reparación</span>
+              <span className="text-3xl font-black text-[#4B7349]">{printingDashboardReport.totalReparacion}</span>
+              <p className="text-[9px] text-gray-450 mt-1">Intervenciones correctivas físicas en equipamiento dañado.</p>
+            </div>
+          </div>
+
+          {printingDashboardReport.filteredTickets && printingDashboardReport.filteredTickets.length > 0 && (
+            <div className="flex flex-col gap-3 mt-6">
+              <h3 className="text-xs font-black text-gray-600 uppercase tracking-wider">Detalle del Registro de Incidencias en Rango:</h3>
+              <table className="w-full border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-100 border-b-2 border-gray-300 text-left">
+                    <th className="px-3 py-2 font-black text-gray-600 uppercase">Fecha</th>
+                    <th className="px-3 py-2 font-black text-gray-600 uppercase">ID Equipo</th>
+                    <th className="px-3 py-2 font-black text-gray-600 uppercase">Técnico</th>
+                    <th className="px-3 py-2 font-black text-gray-600 uppercase">Tipo / Tarea</th>
+                    <th className="px-3 py-2 font-black text-gray-600 uppercase">Subtarea</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {printingDashboardReport.filteredTickets.map((t: any) => (
+                    <tr key={t.id} className="hover:bg-gray-50/50">
+                      <td className="px-3 py-2 text-gray-800 font-bold">{t.date}</td>
+                      <td className="px-3 py-2 text-gray-500 font-mono">{t.equipmentId}</td>
+                      <td className="px-3 py-2 text-gray-700">{t.technician}</td>
+                      <td className="px-3 py-2 font-bold uppercase">{t.type}</td>
+                      <td className="px-3 py-2 text-gray-500">{t.subType || 'N/A'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="mt-8 border-t border-gray-100 flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
+            <span>Ateneo CRM Técnico v2.5 Suite</span>
+            <span>Documento Oficial de Auditoría</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -49,6 +49,7 @@ export interface EquipmentLog {
 export interface SparePart {
   id: string;
   name: string;
+  category?: string;
   currentStock: number;
   minStock: number;
   isSerialized: boolean;
@@ -70,6 +71,7 @@ export interface SupportTicket {
   date: string;
   technician: string;
   type: 'Hardware' | 'Software' | 'Redes' | 'Otros' | 'Baja' | 'Anulación Baja';
+  subType?: 'Reparación' | 'Actualización' | string;
   description: string;
   affectedParts: { 
     partId: string; 

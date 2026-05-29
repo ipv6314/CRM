@@ -353,17 +353,17 @@ const SupportView: React.FC = () => {
                   <PrintRow label="N° DE SERIE" value={equip?.serialNumber || 'N/A'} gray />
                   <PrintRow label="MOTIVO DE BAJA" value={printingDictamen.description} height="min-h-[60px]" />
                 </div>
-                <div className="w-full mb-8">
-                   <div className="w-full h-[320px] flex flex-col relative overflow-hidden">
+                <div className="w-full mb-4">
+                   <div className="w-full h-[180px] flex flex-col relative overflow-hidden border border-dashed border-gray-300 rounded-xl">
                       <div className="absolute top-2 left-0 right-0 text-center pointer-events-none">
-                        <span className="text-[9px] font-bold uppercase opacity-20 tracking-widest">AREA PARA INSERTAR IMAGENES</span>
+                        <span className="text-[8px] font-black uppercase opacity-25 tracking-widest">IMAGEN ADJUNTA DEL BIEN DETALLADO</span>
                       </div>
-                      <div className="w-full h-full flex items-center justify-center p-4">
+                      <div className="w-full h-full flex items-center justify-center p-2">
                         {printingDictamen.dictamen?.image ? (
-                          <img src={printingDictamen.dictamen.image} className="max-h-full max-w-full object-contain" alt="Imagen Adjunta" />
+                          <img src={printingDictamen.dictamen.image} className="max-h-[160px] max-w-full object-contain shadow-sm rounded-lg" alt="Imagen Adjunta" />
                         ) : (
-                          <div className="flex flex-col items-center gap-2 opacity-5">
-                             <span className="material-symbols-outlined text-6xl">image_not_supported</span>
+                          <div className="flex flex-col items-center gap-1 opacity-5">
+                             <span className="material-symbols-outlined text-4xl">image_not_supported</span>
                           </div>
                         )}
                       </div>
@@ -423,6 +423,7 @@ const SpecItem = ({ icon, label, value, sub }: any) => (
 const NewTicketModal = ({ onClose, onSubmit, parts, equipment }: { onClose: () => void, onSubmit: (t: any, s?: any) => void, parts: SparePart[], equipment: Equipment }) => {
   const [description, setDescription] = useState('');
   const [type, setType] = useState('Hardware');
+  const [subType, setSubType] = useState<'Reparación' | 'Actualización' | ''>('');
   const [affectedParts, setAffectedParts] = useState<{partId: string, quantity: number, serial?: string}[]>([]);
   const [isBaja, setIsBaja] = useState(false);
   const [showDictamenPopup, setShowDictamenPopup] = useState(false);
@@ -490,7 +491,13 @@ const NewTicketModal = ({ onClose, onSubmit, parts, equipment }: { onClose: () =
 
   const handleSubmit = () => {
     const finalType = isBaja ? 'Baja' : type;
-    const payload: Partial<SupportTicket> = { type: finalType as any, description, affectedParts, dictamen: isBaja ? dictamenData : undefined };
+    const payload: Partial<SupportTicket> = { 
+      type: finalType as any, 
+      subType: finalType === 'Hardware' ? subType : undefined, 
+      description, 
+      affectedParts, 
+      dictamen: isBaja ? dictamenData : undefined 
+    };
     
     // Se envía la actualización de equipo si las specs cambiaron
     onSubmit(payload, specsModified ? editableSpecs : undefined);
@@ -527,8 +534,32 @@ const NewTicketModal = ({ onClose, onSubmit, parts, equipment }: { onClose: () =
               <label className="text-xs font-black uppercase text-gray-400 ml-1">Tipo de Tarea</label>
               <div className="flex flex-wrap gap-2">
                 {INCIDENT_TYPES.map(t => (
-                  <button key={t} type="button" onClick={() => setType(t)} className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all border-2 uppercase tracking-widest ${type === t ? 'bg-[#3D3D3D] border-[#3D3D3D] text-white shadow-lg' : 'bg-gray-50 border-gray-100 text-gray-400 hover:border-green-200'}`}>{t}</button>
+                  <button key={t} type="button" onClick={() => { setType(t); if(t !== 'Hardware') setSubType(''); }} className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all border-2 uppercase tracking-widest ${type === t ? 'bg-[#3D3D3D] border-[#3D3D3D] text-white shadow-lg' : 'bg-gray-50 border-gray-100 text-gray-400 hover:border-green-200'}`}>{t}</button>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {!isBaja && type === 'Hardware' && (
+            <div className="flex flex-col gap-3 animate-in slide-in-from-top-2 duration-200">
+              <label className="text-xs font-black uppercase text-gray-400 ml-1">Sugerir Subtarea (Hardware)</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSubType(subType === 'Reparación' ? '' : 'Reparación')}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all border-2 uppercase tracking-widest flex items-center gap-2 ${subType === 'Reparación' ? 'bg-[#658C2A] border-[#658C2A] text-white shadow-lg' : 'bg-gray-50 border-gray-100 text-gray-400 hover:border-green-200'}`}
+                >
+                  <span className="material-symbols-outlined text-sm">construction</span>
+                  Reparación
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSubType(subType === 'Actualización' ? '' : 'Actualización')}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all border-2 uppercase tracking-widest flex items-center gap-2 ${subType === 'Actualización' ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-gray-50 border-gray-100 text-gray-400 hover:border-blue-200'}`}
+                >
+                  <span className="material-symbols-outlined text-sm">upgrade</span>
+                  Actualización
+                </button>
               </div>
             </div>
           )}
