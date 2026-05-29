@@ -69,7 +69,7 @@ export interface SupportTicket {
   equipmentId: string;
   date: string;
   technician: string;
-  type: 'Hardware' | 'Software' | 'Redes' | 'Otros' | 'Baja';
+  type: 'Hardware' | 'Software' | 'Redes' | 'Otros' | 'Baja' | 'Anulación Baja';
   description: string;
   affectedParts: { 
     partId: string; 

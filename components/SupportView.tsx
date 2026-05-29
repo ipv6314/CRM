@@ -259,6 +259,7 @@ const SupportView: React.FC = () => {
                             ticket.type === 'Hardware' ? 'bg-red-50 text-red-600 border-red-100' :
                             ticket.type === 'Software' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                             ticket.type === 'Baja' ? 'bg-black text-white border-black' :
+                            ticket.type === 'Anulación Baja' ? 'bg-green-100 text-green-800 border-green-300 font-extrabold' :
                             'bg-gray-100 text-gray-600 border-gray-200'
                           }`}>
                             {ticket.type}
@@ -557,10 +558,34 @@ const NewTicketModal = ({ onClose, onSubmit, parts, equipment }: { onClose: () =
                           <div className="flex flex-col">
                             <span className="text-xs font-black text-[#3D3D3D] uppercase">{part?.name}</span>
                             {part?.isSerialized && (
-                              <select className="mt-1 text-[10px] font-mono font-bold bg-green-50 border-none rounded-lg h-7 py-0" value={ap.serial} onChange={(e) => updatePartSerial(index, e.target.value)} required>
-                                <option value="">-- SELECCIONAR SN --</option>
-                                {part.serials?.map((sn: string) => (<option key={sn} value={sn}>{sn}</option>))}
-                              </select>
+                              <div className="flex flex-col gap-2 mt-2 border-t border-gray-100 pt-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[9px] font-black uppercase text-gray-400 min-w-[70px]">Listado S/N:</span>
+                                  <select 
+                                    className="text-[10px] font-mono font-bold bg-[#4B7349]/5 border border-transparent rounded-lg h-8 py-0 flex-1 focus:ring-1 focus:ring-[#4B7349]" 
+                                    value={ap.serial || ''} 
+                                    onChange={(e) => updatePartSerial(index, e.target.value)}
+                                  >
+                                    <option value="">-- SELECCIONAR S/N EXISTENTE --</option>
+                                    {part.serials?.map((sn: string) => (
+                                      <option key={sn} value={sn}>{sn}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[9px] font-black uppercase text-gray-400 min-w-[70px]">Escribir/Scan:</span>
+                                  <div className="relative flex-1">
+                                    <span className="material-symbols-outlined absolute left-2 top-1.5 text-sm text-gray-400">barcode_scanner</span>
+                                    <input 
+                                      type="text" 
+                                      placeholder="Escriba o escanee S/N del repuesto..." 
+                                      className="w-full text-[10px] font-mono border border-gray-200 rounded-lg h-8 pl-8 pr-2 bg-gray-50 focus:ring-1 focus:ring-[#4B7349] focus:bg-white" 
+                                      value={ap.serial || ''} 
+                                      onChange={(e) => updatePartSerial(index, e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
                             )}
                           </div>
                           <button onClick={() => removeAffectedPart(index)} className="material-symbols-outlined text-gray-300 hover:text-red-500">delete</button>

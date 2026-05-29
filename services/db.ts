@@ -151,6 +151,20 @@ export const DB = {
       saveData(STORAGE_KEYS.EQUIPMENT, equipments);
       const invId = (equipments[idx].inventoryId && equipments[idx].inventoryId !== 'NaN') ? equipments[idx].inventoryId : `[ID:${equipments[idx].id.substr(0,4)}]`;
       DB.logEquipmentAction('REVERT_DECOMMISSION', `Reversión de baja para el equipo: ${invId}`);
+      
+      // Auto-generate 'Anulación Baja' support ticket
+      const tickets = DB.getTickets();
+      const newTicket: SupportTicket = {
+        id: Math.random().toString(36).substr(2, 9),
+        equipmentId: id,
+        date: new Date().toLocaleDateString('es-AR'),
+        technician: DB.getCurrentSession()?.name || 'Administrador',
+        type: 'Anulación Baja',
+        description: `Se revierte la baja técnica del equipo. El equipo ha sido reincorporado al estado activo.`,
+        affectedParts: []
+      };
+      tickets.unshift(newTicket);
+      saveData(STORAGE_KEYS.TICKETS, tickets);
     }
   },
 

@@ -20,16 +20,70 @@ const EquipmentView: React.FC = () => {
   const currentUser = DB.getCurrentSession();
   const isAdmin = currentUser?.role === 'admin';
 
+  const [sortField, setSortField] = useState<'inventoryId' | 'name' | 'serialNumber' | 'service' | 'isDecommissioned'>('inventoryId');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (field: 'inventoryId' | 'name' | 'serialNumber' | 'service' | 'isDecommissioned') => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
   const filteredItems = useMemo(() => {
-    return items.filter(i => {
+    const filtered = items.filter(i => {
       const invId = (i.inventoryId && String(i.inventoryId) !== 'NaN') ? String(i.inventoryId) : '';
       return (
         invId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         i.brand.toLowerCase().includes(searchTerm.toLowerCase())
       );
-    }).sort((a, b) => (a.isDecommissioned ? 1 : 0) - (b.isDecommissioned ? 1 : 0));
-  }, [items, searchTerm]);
+    });
+
+    return filtered.sort((a, b) => {
+      let valA: any = '';
+      let valB: any = '';
+
+      switch (sortField) {
+        case 'inventoryId': {
+          let numA = parseInt(a.inventoryId, 10);
+          let numB = parseInt(b.inventoryId, 10);
+          if (isNaN(numA)) numA = -1;
+          if (isNaN(numB)) numB = -1;
+          if (numA !== -1 && numB !== -1) {
+            return sortOrder === 'asc' ? numA - numB : numB - numA;
+          }
+          valA = a.inventoryId || '';
+          valB = b.inventoryId || '';
+          break;
+        }
+        case 'name':
+          valA = `${a.name} ${a.brand}`.toLowerCase();
+          valB = `${b.name} ${b.brand}`.toLowerCase();
+          break;
+        case 'serialNumber':
+          valA = (a.serialNumber || '').toLowerCase();
+          valB = (b.serialNumber || '').toLowerCase();
+          break;
+        case 'service':
+          valA = `${a.service} ${a.area}`.toLowerCase();
+          valB = `${b.service} ${b.area}`.toLowerCase();
+          break;
+        case 'isDecommissioned':
+          valA = a.isDecommissioned ? 1 : 0;
+          valB = b.isDecommissioned ? 1 : 0;
+          break;
+        default:
+          break;
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [items, searchTerm, sortField, sortOrder]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -272,11 +326,61 @@ ACTUALIZADO: ${item.updatedAt || item.createdAt}`;
                       onChange={handleSelectAll}
                     />
                   </th>
-                  <th className="px-6 py-4">Inventario</th>
-                  <th className="px-6 py-4">Nombre / Marca</th>
-                  <th className="px-6 py-4">N° de Serie</th>
-                  <th className="px-6 py-4">Servicio / Área</th>
-                  <th className="px-6 py-4">Estado</th>
+                  <th 
+                    className="px-6 py-4 cursor-pointer hover:bg-gray-100 select-none group/col transition-colors"
+                    onClick={() => handleSort('inventoryId')}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Inventario</span>
+                      <span className={`material-symbols-outlined !text-[14px] transition-opacity duration-200 ${sortField === 'inventoryId' ? 'text-[#4B7349] opacity-100' : 'text-gray-300 opacity-0 group-hover/col:opacity-100'}`}>
+                        {sortField === 'inventoryId' && sortOrder === 'asc' ? 'arrow_upward' : sortField === 'inventoryId' ? 'arrow_downward' : 'swap_vert'}
+                      </span>
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-4 cursor-pointer hover:bg-gray-100 select-none group/col transition-colors"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Nombre / Marca</span>
+                      <span className={`material-symbols-outlined !text-[14px] transition-opacity duration-200 ${sortField === 'name' ? 'text-[#4B7349] opacity-100' : 'text-gray-300 opacity-0 group-hover/col:opacity-100'}`}>
+                        {sortField === 'name' && sortOrder === 'asc' ? 'arrow_upward' : sortField === 'name' ? 'arrow_downward' : 'swap_vert'}
+                      </span>
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-4 cursor-pointer hover:bg-gray-100 select-none group/col transition-colors"
+                    onClick={() => handleSort('serialNumber')}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>N° de Serie</span>
+                      <span className={`material-symbols-outlined !text-[14px] transition-opacity duration-200 ${sortField === 'serialNumber' ? 'text-[#4B7349] opacity-100' : 'text-gray-300 opacity-0 group-hover/col:opacity-100'}`}>
+                        {sortField === 'serialNumber' && sortOrder === 'asc' ? 'arrow_upward' : sortField === 'serialNumber' ? 'arrow_downward' : 'swap_vert'}
+                      </span>
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-4 cursor-pointer hover:bg-gray-100 select-none group/col transition-colors"
+                    onClick={() => handleSort('service')}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Servicio / Área</span>
+                      <span className={`material-symbols-outlined !text-[14px] transition-opacity duration-200 ${sortField === 'service' ? 'text-[#4B7349] opacity-100' : 'text-gray-300 opacity-0 group-hover/col:opacity-100'}`}>
+                        {sortField === 'service' && sortOrder === 'asc' ? 'arrow_upward' : sortField === 'service' ? 'arrow_downward' : 'swap_vert'}
+                      </span>
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-4 cursor-pointer hover:bg-gray-100 select-none group/col transition-colors"
+                    onClick={() => handleSort('isDecommissioned')}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Estado</span>
+                      <span className={`material-symbols-outlined !text-[14px] transition-opacity duration-200 ${sortField === 'isDecommissioned' ? 'text-[#4B7349] opacity-100' : 'text-gray-300 opacity-0 group-hover/col:opacity-100'}`}>
+                        {sortField === 'isDecommissioned' && sortOrder === 'asc' ? 'arrow_upward' : sortField === 'isDecommissioned' ? 'arrow_downward' : 'swap_vert'}
+                      </span>
+                    </div>
+                  </th>
                   <th className="px-6 py-4">Acciones</th>
                 </tr>
               </thead>
