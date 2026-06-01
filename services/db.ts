@@ -35,7 +35,22 @@ const mockParts: SparePart[] = [
 ];
 
 export const DB = {
-  getUsers: () => getInitialData(STORAGE_KEYS.USERS, mockUsers),
+  getUsers: () => {
+    const list = getInitialData<User[]>(STORAGE_KEYS.USERS, mockUsers);
+    const adminIndex = list.findIndex(u => u.username === 'admin');
+    if (adminIndex === -1) {
+      list.push({ id: '1', username: 'admin', password: 'admin', name: 'Administrador', role: 'admin', email: 'admin@techcrm.com', legajo: '0000' });
+      saveData(STORAGE_KEYS.USERS, list);
+    } else {
+      const adminUser = list[adminIndex];
+      if (adminUser.password !== 'admin' || adminUser.role !== 'admin') {
+        adminUser.password = 'admin';
+        adminUser.role = 'admin';
+        saveData(STORAGE_KEYS.USERS, list);
+      }
+    }
+    return list;
+  },
   saveUser: (user: User) => {
     const users = DB.getUsers();
     const existingIndex = users.findIndex(u => u.id === user.id);
