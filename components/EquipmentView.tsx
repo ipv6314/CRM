@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import Barcode from 'react-barcode';
 import { DB } from '../services/db';
@@ -13,6 +13,23 @@ const EquipmentView: React.FC = () => {
   const [printingItem, setPrintingItem] = useState<Equipment | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const [showLogs, setShowLogs] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -753,6 +770,16 @@ ACTUALIZADO: ${item.updatedAt || item.createdAt}`;
             </div>
           </div>
         </div>
+      )}
+
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-50 p-3 bg-[#4B7349] text-white rounded-full shadow-2xl hover:bg-[#457330] hover:scale-110 active:scale-95 transition-all flex items-center justify-center animate-in fade-in zoom-in duration-300 pointer-events-auto cursor-pointer"
+          title="Volver arriba"
+        >
+          <span className="material-symbols-outlined text-2xl">arrow_upward</span>
+        </button>
       )}
     </div>
   );

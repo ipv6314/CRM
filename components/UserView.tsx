@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { DB } from '../services/db';
 import { User } from '../types';
 
 const UserView: React.FC = () => {
   const [users, setUsers] = useState<User[]>(DB.getUsers());
   const [editing, setEditing] = useState<User | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,6 +17,53 @@ const UserView: React.FC = () => {
     setEditing(null);
   };
 
+  const handleExportJSON = () => {
+    const dataStr = JSON.stringify(users, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = 'usuarios.json';
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileReader = new FileReader();
+    if (e.target.files && e.target.files[0]) {
+      fileReader.readAsText(e.target.files[0], "UTF-8");
+      fileReader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target?.result as string);
+          if (Array.isArray(parsed)) {
+            let importCount = 0;
+            parsed.forEach((importedUser: any) => {
+              if (importedUser.username && importedUser.name) {
+                const userToSave: User = {
+                  id: importedUser.id || Math.random().toString(36).substr(2, 9),
+                  username: String(importedUser.username),
+                  password: String(importedUser.password || '123456'),
+                  name: String(importedUser.name),
+                  role: importedUser.role === 'admin' ? 'admin' : 'technician',
+                  legajo: String(importedUser.legajo || '0000'),
+                  email: importedUser.email ? String(importedUser.email) : undefined
+                };
+                DB.saveUser(userToSave);
+                importCount++;
+              }
+            });
+            setUsers(DB.getUsers());
+            alert(`Se han importado ${importCount} usuarios con éxito de forma persistente.`);
+          } else {
+            alert("Formato inválido: El archivo JSON debe contener un array de usuarios.");
+          }
+        } catch (err) {
+          alert("Error al leer el archivo JSON. Asegúrese de que sea un archivo JSON válido.");
+        }
+      };
+    }
+  };
+
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500">
       <div className="flex justify-between items-end">
@@ -23,13 +71,39 @@ const UserView: React.FC = () => {
           <h2 className="text-3xl font-black text-[#181411]">Administración de Usuarios</h2>
           <p className="text-[#897161]">Gestión de accesos, roles y credenciales de personal</p>
         </div>
-        <button 
-          onClick={() => setEditing({ id: '', username: '', password: '', name: '', role: 'technician', legajo: '' })}
-          className="bg-[#3D3D3D] text-white px-6 h-11 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:bg-black transition-all"
-        >
-          <span className="material-symbols-outlined">person_add</span>
-          Agregar Usuario
-        </button>
+        <div className="flex gap-3">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleImportJSON} 
+            accept=".json" 
+            className="hidden" 
+          />
+          <button 
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 px-4 h-11 rounded-xl border-2 border-[#4B7349] text-[#4B7349] font-bold hover:bg-[#4B7349]/5 transition-colors cursor-pointer text-xs uppercase tracking-wide"
+          >
+            <span className="material-symbols-outlined text-sm">upload</span>
+            Importar JSON
+          </button>
+          <button 
+            type="button"
+            onClick={handleExportJSON}
+            className="flex items-center gap-2 px-4 h-11 rounded-xl border-2 border-gray-200 text-gray-500 font-bold hover:bg-gray-50 transition-colors cursor-pointer text-xs uppercase tracking-wide"
+          >
+            <span className="material-symbols-outlined text-sm">download</span>
+            Exportar JSON
+          </button>
+          <button 
+            type="button"
+            onClick={() => setEditing({ id: '', username: '', password: '', name: '', role: 'technician', legajo: '' })}
+            className="bg-[#3D3D3D] text-white px-5 h-11 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:bg-black transition-all text-xs uppercase tracking-wide cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-sm">person_add</span>
+            Agregar Usuario
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
