@@ -12,6 +12,7 @@ const SupportView: React.FC = () => {
   const [globalTickets, setGlobalTickets] = useState<SupportTicket[]>(DB.getTickets());
   const [printingDictamen, setPrintingDictamen] = useState<SupportTicket | null>(null);
   const [viewingTicket, setViewingTicket] = useState<SupportTicket | null>(null);
+  const [editingTicket, setEditingTicket] = useState<SupportTicket | null>(null);
   
   const equipment = DB.getEquipment();
   const spareParts = DB.getSpareParts();
@@ -288,6 +289,35 @@ const SupportView: React.FC = () => {
                                 Dictamen
                               </button>
                             )}
+                            {isAdmin && (
+                              <button
+                                onClick={() => setEditingTicket(ticket)}
+                                className="text-blue-600 hover:bg-blue-50/50 p-2 rounded-lg flex items-center gap-1 text-[10px] font-black uppercase transition-all"
+                                title="Editar Soporte"
+                              >
+                                <span className="material-symbols-outlined text-sm">edit</span>
+                                Editar
+                              </button>
+                            )}
+                            {isAdmin && (
+                              <button
+                                onClick={() => {
+                                  if (confirm('¿Está seguro de que desea eliminar este ticket de soporte del historial?')) {
+                                    DB.deleteTicket(ticket.id);
+                                    setGlobalTickets(DB.getTickets());
+                                    if (selectedEquip) {
+                                      const refreshed = DB.getEquipment().find(e => e.id === selectedEquip.id);
+                                      setSelectedEquip(refreshed || null);
+                                    }
+                                  }
+                                }}
+                                className="text-red-500 hover:bg-red-55/50 p-2 rounded-lg flex items-center gap-1 text-[10px] font-black uppercase transition-all"
+                                title="Eliminar Soporte"
+                              >
+                                <span className="material-symbols-outlined text-sm">delete</span>
+                                Eliminar
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -316,6 +346,22 @@ const SupportView: React.FC = () => {
           equipmentList={equipment} 
           partsList={spareParts}
           onPrintDictamen={handlePrintDictamen}
+        />
+      )}
+
+      {editingTicket && (
+        <EditTicketModal 
+          ticket={editingTicket} 
+          onClose={() => setEditingTicket(null)} 
+          onSave={(updated) => {
+            DB.updateTicket(updated);
+            setGlobalTickets(DB.getTickets());
+            if (selectedEquip) {
+              const refreshed = DB.getEquipment().find(e => e.id === selectedEquip.id);
+              setSelectedEquip(refreshed || null);
+            }
+            setEditingTicket(null);
+          }}
         />
       )}
 
@@ -837,6 +883,118 @@ const TicketDetailsModal = ({
             Cerrar
           </button>
         </div>
+      </div>
+    </div>
+  );
+};
+
+const EditTicketModal = ({ 
+  ticket, 
+  onClose, 
+  onSave 
+}: { 
+  ticket: SupportTicket; 
+  onClose: () => void; 
+  onSave: (t: SupportTicket) => void; 
+}) => {
+  const [description, setDescription] = useState(ticket.description || '');
+  const [type, setType] = useState(ticket.type || 'Hardware');
+  const [date, setDate] = useState(ticket.date || '');
+  const [technician, setTechnician] = useState(ticket.technician || '');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      ...ticket,
+      type: type as any,
+      description,
+      date,
+      technician,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-[#181411]/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200 no-print font-sans">
+      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="p-6 text-white flex justify-between items-center bg-[#3D3D3D]">
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-2xl">edit</span>
+            <div>
+              <h3 className="font-black uppercase tracking-wider text-sm">Editar Registro de Soporte</h3>
+              <p className="text-white/70 text-[10px] font-black uppercase tracking-tight">Modificar datos del Historial</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="size-8 rounded-full hover:bg-white/10 transition-all flex items-center justify-center material-symbols-outlined">close</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-8 flex flex-col gap-5">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-black uppercase text-gray-400">Tipo de Incidencia / Tarea</label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as any)}
+              className="h-11 px-4 rounded-xl border-gray-200 bg-gray-50 focus:ring-2 focus:ring-[#4B7349]/20 focus:border-[#4B7349] text-sm transition-all font-bold"
+            >
+              <option value="Hardware">Hardware</option>
+              <option value="Software">Software</option>
+              <option value="Redes">Redes</option>
+              <option value="Otros">Otros</option>
+              <option value="Baja">Baja</option>
+              <option value="Anulación Baja">Anulación Baja</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-black uppercase text-gray-400">Técnico Responsable</label>
+            <input
+              type="text"
+              required
+              value={technician}
+              onChange={(e) => setTechnician(e.target.value)}
+              className="h-11 px-4 rounded-xl border-gray-200 bg-gray-50 focus:ring-2 focus:ring-[#4B7349]/20 focus:border-[#4B7349] text-sm transition-all font-bold"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-black uppercase text-gray-400">Fecha</label>
+            <input
+              type="text"
+              required
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="h-11 px-4 rounded-xl border-gray-200 bg-gray-50 focus:ring-2 focus:ring-[#4B7349]/20 focus:border-[#4B7349] text-sm transition-all font-bold"
+              placeholder="Ej: 09/06/2026"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-black uppercase text-gray-400">Informe Técnico / Motivo</label>
+            <textarea
+              required
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full rounded-2xl border-gray-200 focus:ring-2 focus:ring-[#4B7349] focus:border-transparent p-4 text-sm min-h-[120px] bg-gray-50 transition-all font-medium placeholder:text-gray-300"
+              placeholder="Describa detalladamente el trabajo realizado..."
+            />
+          </div>
+
+          <div className="flex gap-3 justify-end mt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 h-12 border-2 border-gray-200 hover:bg-gray-50 text-gray-500 rounded-xl font-bold text-xs uppercase"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-6 h-12 bg-[#4B7349] hover:bg-[#3f613d] text-white rounded-xl font-bold text-xs uppercase flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-sm">save</span>
+              Guardar Cambios
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
