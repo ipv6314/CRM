@@ -205,6 +205,19 @@ export const DB = {
   clearTickets: () => {
     saveData(STORAGE_KEYS.TICKETS, []);
   },
+  updateTicket: (ticket: SupportTicket) => {
+    const tickets = DB.getTickets();
+    const idx = tickets.findIndex(t => t.id === ticket.id);
+    if (idx > -1) {
+      tickets[idx] = ticket;
+      saveData(STORAGE_KEYS.TICKETS, tickets);
+    }
+  },
+  deleteTicket: (id: string) => {
+    const tickets = DB.getTickets();
+    const filtered = tickets.filter(t => t.id !== id);
+    saveData(STORAGE_KEYS.TICKETS, filtered);
+  },
 
   getCurrentSession: (): User | null => getInitialData(STORAGE_KEYS.SESSION, null),
   login: (username: string, password: string): User | null => {

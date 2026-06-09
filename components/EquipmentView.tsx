@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import Barcode from 'react-barcode';
 import { DB } from '../services/db';
@@ -16,6 +16,23 @@ const EquipmentView: React.FC = () => {
   const [showLogs, setShowLogs] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const currentUser = DB.getCurrentSession();
   const isAdmin = currentUser?.role === 'admin';
@@ -372,7 +389,7 @@ ACTUALIZADO: ${item.updatedAt || item.createdAt}`;
           <button 
             onClick={() => setEditing({ 
               id: '', inventoryId: '', effector: '', service: '', area: '', consultorio: '', name: '', 
-              brand: '', model: '', type: '', os: '', cpu: '', speed: '', ramModule: 'DIMM', 
+              brand: '', model: '', type: 'MINI PC', os: '', cpu: '', speed: '', ramModule: 'DIMM', 
               ramGeneration: 'DDR4', ramCapacity: '', storageType: 'SSD', storageCapacity: '', 
               macLan: '', macWireless: '', comments: '', 
               createdAt: '', updatedAt: '', serialNumber: '' 
@@ -644,7 +661,12 @@ ACTUALIZADO: ${item.updatedAt || item.createdAt}`;
                   <Input label="Marca" value={editing.brand} onChange={(v: string) => setEditing({...editing, brand: v})} required />
                   <Input label="Modelo" value={editing.model} onChange={(v: string) => setEditing({...editing, model: v})} required />
                   <Input label="N° de Serie" value={editing.serialNumber || ''} onChange={(v: string) => setEditing({...editing, serialNumber: v})} placeholder="Opcional" />
-                  <Input label="Tipo de Equipo" value={editing.type} onChange={(v: string) => setEditing({...editing, type: v})} required placeholder="Ej: All-in-One, Desktop, Laptop" />
+                  <Select 
+                    label="Tipo de Equipo" 
+                    value={editing.type} 
+                    options={['MINI PC', 'DESKTOP', 'ALL IN ONE', 'LAPTOP']} 
+                    onChange={(v: string) => setEditing({...editing, type: v})} 
+                  />
                 </div>
               </div>
 
@@ -754,7 +776,15 @@ ACTUALIZADO: ${item.updatedAt || item.createdAt}`;
           </div>
         </div>
       )}
-
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-50 p-4 bg-[#4B7349] text-white rounded-full shadow-2xl hover:bg-[#457330] hover:scale-110 active:scale-95 transition-all flex items-center justify-center cursor-pointer pointer-events-auto animate-bounce"
+          title="Volver arriba"
+        >
+          <span className="material-symbols-outlined text-2xl font-bold">arrow_upward</span>
+        </button>
+      )}
 
     </div>
   );
