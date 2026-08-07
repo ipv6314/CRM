@@ -17,6 +17,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, onLogout }) => 
     { id: ViewState.Equipos, icon: 'computer', label: 'Equipos' },
     { id: ViewState.Soporte, icon: 'headset_mic', label: 'Soporte' },
     { id: ViewState.Repuestos, icon: 'inventory_2', label: 'Repuestos' },
+    { id: ViewState.Insumos, icon: 'box', label: 'Insumos' },
     { id: ViewState.Usuarios, icon: 'group', label: 'Usuarios' },
   ];
 

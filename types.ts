@@ -65,6 +65,39 @@ export interface SparePartLog {
   details: string;
 }
 
+export interface Supply {
+  id: string;
+  name: string;
+  category?: string;
+  unit?: string;
+  currentStock: number;
+  minStock: number;
+  comments?: string;
+}
+
+export interface SupplyDeduction {
+  id: string;
+  supplyId: string;
+  supplyName: string;
+  category?: string;
+  date: string; // Obligatorio
+  destination: string; // Obligatorio
+  project?: string; // Proyecto
+  quantity: number; // Obligatorio
+  registeredBy: string;
+  notes?: string;
+  timestamp: string;
+}
+
+export interface SupplyLog {
+  id: string;
+  timestamp: string;
+  userId: string;
+  userName: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'STOCK_ADJUST' | 'DEDUCT';
+  details: string;
+}
+
 export interface SupportTicket {
   id: string;
   equipmentId: string;
@@ -90,5 +123,6 @@ export enum ViewState {
   Equipos = 'equipos',
   Soporte = 'soporte',
   Repuestos = 'repuestos',
+  Insumos = 'insumos',
   Usuarios = 'usuarios'
 }

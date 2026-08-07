@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard';
 import EquipmentView from './components/EquipmentView';
 import SupportView from './components/SupportView';
 import SparePartsView from './components/SparePartsView';
+import SuppliesView from './components/SuppliesView';
 import UserView from './components/UserView';
 import Login from './components/Login';
 import { ViewState, User } from './types';
@@ -35,6 +36,7 @@ const App: React.FC = () => {
       case ViewState.Equipos: return <EquipmentView />;
       case ViewState.Soporte: return <SupportView />;
       case ViewState.Repuestos: return <SparePartsView />;
+      case ViewState.Insumos: return <SuppliesView />;
       case ViewState.Usuarios: return <UserView />;
       default: return <Dashboard />;
     }
