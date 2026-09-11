@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { DB } from '../services/db';
 import { Equipment, SupportTicket, SparePart } from '../types';
 import { COLORS, INCIDENT_TYPES } from '../constants';
-import { GoogleGenAI } from "@google/genai";
+
 
 const SupportView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
